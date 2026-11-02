@@ -1,0 +1,45 @@
+# ===== Unity 生成目录（不提交）=====
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# ===== IDE / 编辑器 =====
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userosscache
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# ===== Unity 崩溃报告 / 缓存 =====
+sysinfo.txt
+*.stackdump
+crashlytics-build.properties
+
+# ===== 构建产物 =====
+*.apk
+*.aab
+*.unitypackage
+*.app
+*.exe
+Build/
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+desktop.ini
