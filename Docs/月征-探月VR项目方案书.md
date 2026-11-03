@@ -152,8 +152,8 @@
 
 ## 五、技术方案
 
-- **引擎**：Unity 6 LTS（6000.x，为满足 AR Foundation 6.x 的版本要求；工程尚未创建，无迁移成本），URP 渲染管线（方便后期调色）。
-- **AR**：AR Foundation 6 + XR Plug-in Management（ARCore/ARKit 插件），二维码识别用 ZXing；安装 Unity 时需勾选 Android Build Support。设备要求：全组至少一台支持 AR 的手机（安卓需 ARCore 认证机型，iPhone 均可）。
+- **引擎**：Unity 2022.3 LTS（全员统一使用 2022.3.62f1），URP 渲染管线（方便后期调色）。
+- **AR**：AR Foundation 5.1（平面检测与射线交互满足本项目"二维码识别 + 平面放置"方案）+ XR Plug-in Management（ARCore/ARKit 插件），二维码识别用 ZXing；Unity Hub 中为编辑器补装 Android Build Support 模块。设备要求：全组至少一台支持 AR 的手机（安卓需 ARCore 认证机型，iPhone 均可）。
 - **语言**：C#。
 - **版本管理**：Git + GitHub 私有仓库。Unity 加 `.gitignore` + `Edit > Project Settings > Editor > Asset Serialization: Force Text`。
 - **协作方式**：场景文件直接合并的冲突风险高，因此**按目录分工**：`/Scripts` 与 UI 逻辑归模块一，`/Scenes` 与 `/Art` 归模块二，`/Content`（对话、素材表）归模块三，`/Cinematics` 与 `/Audio` 归模块四；同一场景不同人修改前先在群里报备。
@@ -285,6 +285,6 @@
 ## 十、下一步行动（本周内）
 
 1. 全员过一遍本方案 + 一起看《中国月球基地计划.mp4》（课程指定参考），组会认领四大模块。
-2. 建好 Unity 6 LTS 工程 + Git 仓库，按第五节目录结构初始化；全员确认手机 AR 支持情况（ARCore 认证机型或 iPhone，至少一台）。
+2. 建好 Unity 2022.3.62f1 工程 + Git 仓库，按第五节目录结构初始化；全员确认手机 AR 支持情况（ARCore 认证机型或 iPhone，至少一台）。
 3. 各模块的模板/清单/图文步骤包在组会后发出（剧本分镜模板、素材来源清单、Timeline 步骤、对话填表说明、音源清单、测试用例模板）。
 4. 模块二先出月球车 blocked-out 大形；模块一先跑通步行 + 驾驶白盒；模块三开始填五幕分镜；模块四先收集音源并试剪 30 秒发射序列小样。
