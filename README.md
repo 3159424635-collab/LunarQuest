@@ -10,9 +10,10 @@
 
 | 项目 | 要求 |
 |---|---|
-| Unity | **2022.3 LTS**，全员用同一个 2022.3.x 小版本（Unity Hub → Installs 安装） |
+| Unity | **Unity 6 LTS（6000.x）**，全员使用同一版本；安装时需勾选 **Android Build Support** 模块（手机端 AR 构建需要） |
 | 模板 | 3D (URP) |
 | IDE | Visual Studio 2022 或 VS Code（写 C#） |
+| 手机 | 全组至少一台支持 AR 的设备：安卓需 ARCore 认证机型（搜索 "ARCore supported devices" 查询），iPhone 均可 |
 | Git | 命令行 Git + GitHub Desktop（不熟悉命令行的成员统一使用 GitHub Desktop） |
 
 **克隆后必做（每人一次）：** Unity 编辑器 → Edit → Project Settings → Editor →
