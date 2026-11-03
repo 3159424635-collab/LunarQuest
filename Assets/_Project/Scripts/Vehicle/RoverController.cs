@@ -7,8 +7,8 @@ namespace LunarQuest
     /// 操控：←→ 转向（视线方向），↑↓ 油门/刹车，Shift 加速，空格 手刹漂移。
     ///
     /// 技术方案：刚体 + 简化力模型（推力/抓地/下压三个力 + 速度衰减转向），
-    /// 刻意不用 WheelCollider——它调参成本极高且容易翻车，这套方案 200 行内做出
-    /// 稳定的"越野飞车"手感，参数全部暴露在面板上方便现场调校。
+    /// 不使用 WheelCollider（调参成本高且稳定性差）；本方案以两百行以内的代码
+    /// 实现稳定的越野驾驶手感，参数全部暴露在面板上便于调校。
     ///
     /// 挂载要求：给车体（BoxCollider）挂本脚本，Rigidbody 会自动加上。
     /// </summary>
@@ -16,7 +16,7 @@ namespace LunarQuest
     public class RoverController : MonoBehaviour
     {
         [Header("动力")]
-        public float motorForce = 6000f;      // 油门推力（牛）。起步太肉就加大
+        public float motorForce = 6000f;      // 油门推力（牛）。起步加速不足时增大
         public float maxSpeed = 18f;          // 最高速度 m/s（约 65 km/h）
         public float boostMultiplier = 1.5f;  // Shift 加速档倍率
         public float brakeForce = 9000f;      // 行进中按 ↓ 的刹车力
@@ -37,7 +37,7 @@ namespace LunarQuest
         void Awake()
         {
             rb = GetComponent<Rigidbody>();
-            if (rb.mass < 10f) rb.mass = 220f;          // 白盒阶段忘改质量也能有合理手感
+            if (rb.mass < 10f) rb.mass = 220f;          // 未手动设置质量时使用合理默认值
             rb.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             rb.centerOfMass = new Vector3(0f, -0.4f, 0f); // 质心压低，抗翻的核心
             rb.interpolation = RigidbodyInterpolation.Interpolate; // 物理帧与渲染帧之间插值，追尾相机不抖
@@ -47,7 +47,7 @@ namespace LunarQuest
         void FixedUpdate()
         {
             // 默认 Input Manager 的 Horizontal/Vertical 轴同时绑定 WASD 和方向键，
-            // 课程的"方向键控制"要求开箱即得，无需任何配置
+            // 课程的"方向键控制"要求因此直接满足，无需额外配置
             float steer = Input.GetAxis("Horizontal");
             float throttle = Input.GetAxis("Vertical");
             bool boost = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);

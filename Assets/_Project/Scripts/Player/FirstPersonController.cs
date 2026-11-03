@@ -14,13 +14,13 @@ namespace LunarQuest
         public float walkSpeed = 5f;            // 行走速度 m/s
         public float jumpHeight = 1.2f;         // 跳跃目标高度（米）。月面重力下实际弧线更飘、滞空更长
 
-        [Header("重力（月面就调这里）")]
+        [Header("重力（按场景调整）")]
         [Tooltip("1 = 地球 9.81，1/6 = 月面 1.62。切场景时改这一个参数即可")]
         public float gravityScale = 1f / 6f;
 
         [Header("视角")]
-        public float mouseSensitivity = 150f;   // 太快/太慢优先调这个
-        public float pitchLimit = 85f;          // 俯仰限制，防止脖子拧断
+        public float mouseSensitivity = 150f;   // 视角转速不合适时优先调整此参数
+        public float pitchLimit = 85f;          // 俯仰角度限制，避免视角过度旋转
 
         CharacterController cc;
         Transform cam;
@@ -58,7 +58,7 @@ namespace LunarQuest
         {
             bool grounded = cc.isGrounded;
             if (grounded && verticalVelocity < 0f)
-                verticalVelocity = -2f; // 贴地力：站在地面时给一点下压，避免下坡悬空抖动
+                verticalVelocity = -2f; // 贴地处理：在地面时保持下压力，避免下坡时悬空抖动
 
             // WASD 输入，归一化防斜向加速；转为身体朝向的世界方向
             Vector3 input = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical"));

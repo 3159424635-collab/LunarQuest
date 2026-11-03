@@ -11,7 +11,7 @@ namespace LunarQuest
     {
         public Transform target;                       // 月球车
         public Vector3 offset = new Vector3(0f, 3.5f, -7f); // 车后上方
-        public float followSmoothing = 6f;             // 跟随平滑度，越大越"跟得紧"
+        public float followSmoothing = 6f;             // 跟随平滑度，数值越大跟随越紧
 
         [Header("速度感视野")]
         public float baseFov = 60f;
@@ -31,14 +31,14 @@ namespace LunarQuest
         {
             if (!target) return;
 
-            // 位置：车后方的目标点做插值，避免硬邦邦的"焊死在车上"
+            // 位置：对车后方的目标点做插值，避免相机刚性固定产生的僵硬感
             Vector3 desired = target.position + target.TransformDirection(offset);
             transform.position = Vector3.Lerp(transform.position, desired, followSmoothing * Time.deltaTime);
 
             // 看向车前方一点，过弯时镜头自然带动视线
             transform.LookAt(target.position + target.forward * 3f + Vector3.up * 1.2f);
 
-            // FOV 随速度拉伸，速度感的低成本特效
+            // FOV 随速度拉伸，以较低成本增强速度感
             if (cam && rover)
                 cam.fieldOfView = Mathf.Lerp(baseFov, maxFov,
                     Mathf.Clamp01(rover.SpeedKmh / 3.6f / fovMaxSpeed));
