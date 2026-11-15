@@ -22,10 +22,17 @@ namespace LunarQuest
         public float mouseSensitivity = 150f;   // 视角转速不合适时优先调整此参数
         public float pitchLimit = 85f;          // 俯仰角度限制，避免视角过度旋转
 
+        [Header("第三人称（V 键切换）")]
+        public GameObject thirdPersonBody;      // 第三人称下显示的身体模型（第一人称隐藏）
+        public float thirdPersonDistance = 3.4f; // 相机在身后的距离
+        public float thirdPersonHeight = 0.6f;  // 相机相对头部抬高的高度
+
         CharacterController cc;
         Transform cam;
+        Vector3 fpCamLocal;                     // 第一人称相机的原始局部位置
         float pitch;            // 相机俯仰角
         float verticalVelocity; // 垂直速度（跳跃/下落）
+        bool thirdPerson;
 
         // 实际重力加速度 = -9.81 × 倍率
         float Gravity => -9.81f * gravityScale;
@@ -34,14 +41,27 @@ namespace LunarQuest
         {
             cc = GetComponent<CharacterController>();
             cam = GetComponentInChildren<Camera>().transform;
+            fpCamLocal = cam.localPosition;
             Cursor.lockState = CursorLockMode.Locked; // 锁鼠标到屏幕中心，Esc 可解锁
             Cursor.visible = false;
         }
 
         void Update()
         {
+            if (Input.GetKeyDown(KeyCode.V)) ToggleView();
             Look();
             Move();
+        }
+
+        void ToggleView()
+        {
+            thirdPerson = !thirdPerson;
+            if (thirdPersonBody) thirdPersonBody.SetActive(thirdPerson);
+            if (!thirdPerson)
+            {
+                cam.localPosition = fpCamLocal;
+                cam.localRotation = Quaternion.identity;
+            }
         }
 
         void Look()
@@ -51,7 +71,18 @@ namespace LunarQuest
             float my = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
             transform.Rotate(0f, mx, 0f);
             pitch = Mathf.Clamp(pitch - my, -pitchLimit, pitchLimit);
-            cam.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+
+            if (!thirdPerson)
+            {
+                cam.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+                return;
+            }
+
+            // 第三人称：相机绕头部转动，保持俯仰角一致，从身后看向前方
+            Quaternion view = Quaternion.Euler(pitch, transform.eulerAngles.y, 0f);
+            Vector3 head = transform.position + Vector3.up * 1.6f;
+            cam.position = head + view * (Vector3.back * thirdPersonDistance) + Vector3.up * thirdPersonHeight;
+            cam.rotation = view;
         }
 
         void Move()

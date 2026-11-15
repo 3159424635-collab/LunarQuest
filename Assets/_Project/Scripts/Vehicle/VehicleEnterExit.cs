@@ -47,7 +47,20 @@ namespace LunarQuest
             inVehicle = true;
             player.gameObject.SetActive(false);     // 玩家整体隐藏（含相机、控制器、交互）
             rover.enabled = true;
-            if (roverCamera) roverCamera.gameObject.SetActive(true);
+            if (roverCamera)
+            {
+                roverCamera.gameObject.SetActive(true);
+                // 编辑器搭建时相机组件可能是禁用状态，上车时一并开启，避免黑屏
+                var cam = roverCamera.GetComponent<Camera>();
+                if (cam) cam.enabled = true;
+            }
+        }
+
+        /// <summary>外部切换入口（交互脚本 E 键调用，与 F 键等效）。</summary>
+        public void Toggle()
+        {
+            if (inVehicle) Exit();
+            else Enter();
         }
 
         void Exit()

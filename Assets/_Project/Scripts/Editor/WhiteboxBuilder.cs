@@ -51,16 +51,16 @@ namespace LunarQuest.EditorTools
 
             var player = BuildPlayer(new Vector3(0f, 0f, 150f), Ground);
             BuildRover(new Vector3(24f, 0f, 156f), Ground, player.transform);
-            PlaceModel(ModelDir + "/月球基地.fbx", 46f, new Vector3(-6f, 0f, 178f), Ground, "MoonBase", true);
-            PlaceModel(ModelDir + "/毅力号.fbx", 2.7f, new Vector3(14f, 0f, 150f), Ground, "Exhibit_Perseverance", false);
-            PlaceNpc("base_coordinator", "周航_协调员", new Vector3(2f, 0f, 158f), Ground);
-            PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(-9f, 0f, 162f), Ground);
-            PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(18f, 0f, 150f), Ground);
+            PlaceModel(ModelDir + "/月球基地.fbx", 46f, new Vector3(-6f, 0f, 178f), Ground, "MoonBase", true, true);
+            PlaceModel(ModelDir + "/毅力号.fbx", 2.7f, new Vector3(14f, 0f, 150f), Ground, "Exhibit_Perseverance", false, false);
+            PlaceNpc("base_coordinator", "周航_协调员", new Vector3(2f, 0f, 158f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
+            PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(-9f, 0f, 162f), Ground, "样本先放我这里，参观完科普厅再走。");
+            PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(18f, 0f, 150f), Ground, "车就在外面，月面路滑，慢点开。");
             BuildSampleRocks(Ground);
             BuildRockField(Ground);
             BuildMinimap(player.transform);
 
-            player.GetComponent<HUDController>().SetQuest("熟悉广寒站：走近提示按 E 交互；月球车按 F 上下车");
+            player.GetComponent<HUDController>().SetQuest("E 交谈/采样 · F 上下月球车 · V 切换视角");
 
             const string scenePath = "Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity";
             EditorSceneManager.SaveScene(scene, scenePath);
@@ -111,7 +111,14 @@ namespace LunarQuest.EditorTools
             var go = Terrain.CreateTerrainGameObject(td);
             go.name = "Terrain";
             go.transform.position = new Vector3(-MapSize * 0.5f, 0f, -MapSize * 0.5f);
-            AssetDatabase.CreateAsset(td, "Assets/_Project/Scenes/S4_TerrainData.asset");
+            const string terrainAsset = "Assets/_Project/Scenes/S4_TerrainData.asset";
+            if (File.Exists(terrainAsset))
+            {
+                File.Delete(terrainAsset);
+                File.Delete(terrainAsset + ".meta");
+                AssetDatabase.Refresh();
+            }
+            AssetDatabase.CreateAsset(td, terrainAsset);
             Report.AppendLine($"[地形] 500x500m；3号坑@({CraterMain.x},{CraterMain.y}) r={CraterMainR} d={CraterMainD}m；基地平区@({BaseFlat.x},{BaseFlat.y}) r={BaseFlatR}m；着陆区@({LandingFlat.x},{LandingFlat.y}) r={LandingFlatR}m");
             return go.GetComponent<Terrain>();
         }
@@ -143,6 +150,10 @@ namespace LunarQuest.EditorTools
 
         static TerrainLayer BuildTerrainLayer()
         {
+            const string layerPath = "Assets/_Project/Art/Textures/TL_MoonGray.asset";
+            var existingLayer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(layerPath);
+            if (existingLayer != null) return existingLayer;
+
             const string texPath = "Assets/_Project/Art/Textures/T_MoonFlat.png";
             if (AssetDatabase.LoadAssetAtPath<Texture2D>(texPath) == null)
             {
@@ -157,7 +168,7 @@ namespace LunarQuest.EditorTools
                 diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath),
                 tileSize = new Vector2(30f, 30f),
             };
-            AssetDatabase.CreateAsset(layer, "Assets/_Project/Art/Textures/TL_MoonGray.asset");
+            AssetDatabase.CreateAsset(layer, layerPath);
             return layer;
         }
 
@@ -182,7 +193,23 @@ namespace LunarQuest.EditorTools
             var cam = camGo.AddComponent<Camera>();
             cam.tag = "MainCamera";
             camGo.AddComponent<AudioListener>();
-            Report.AppendLine("[玩家] 出生于广寒站中央；第一人称 + E 交互 + OnGUI 调试 HUD");
+
+            // 第三人称身体：第一人称隐藏，V 键切换显示
+            var bodyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharDir + "/player_astronaut.glb");
+            if (bodyPrefab != null)
+            {
+                var body = (GameObject)PrefabUtility.InstantiatePrefab(bodyPrefab);
+                body.name = "AstronautBody";
+                body.transform.SetParent(player.transform, false);
+                Bounds bb = LocalBounds(body.transform);
+                float bodyScale = 1.8f / Mathf.Max(bb.size.y, 0.01f);
+                body.transform.localScale = Vector3.one * bodyScale;
+                bb = LocalBounds(body.transform);
+                body.transform.localPosition += Vector3.up * ((player.position.y - 0.9f) - bb.min.y);
+                body.SetActive(false);
+                player.GetComponent<FirstPersonController>().thirdPersonBody = body;
+            }
+            Report.AppendLine("[玩家] 出生于广寒站中央；第一人称 + E 交互 + OnGUI 调试 HUD + V 第三人称");
             return player;
         }
 
@@ -229,6 +256,10 @@ namespace LunarQuest.EditorTools
             var enterExit = rover.AddComponent<VehicleEnterExit>();
             enterExit.player = player;
             enterExit.roverCamera = rc;
+
+            var door = rover.AddComponent<VehicleDoor>();
+            door.vehicle = enterExit;
+            door.prompt = "按 F 或 E 上下车";
 
             PrefabUtility.SaveAsPrefabAsset(rover, "Assets/_Project/Prefabs/PF_Rover.prefab");
         }
@@ -285,7 +316,7 @@ namespace LunarQuest.EditorTools
         }
 
         static GameObject PlaceModel(string path, float targetMax, Vector3 pos,
-            Func<Vector3, float> ground, string name, bool addCollider)
+            Func<Vector3, float> ground, string name, bool addCollider, bool stripGround = false)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab == null)
@@ -297,6 +328,19 @@ namespace LunarQuest.EditorTools
             go.name = name;
             go.transform.position = Vector3.zero;
             go.transform.localScale = Vector3.one;
+            if (stripGround)
+            {
+                // 摘除内嵌的巨大地面网格（横向数百米、纵向不足 1 米的渲染器），
+                // 避免整体按最大边缩放时建筑被压扁
+                foreach (var r in go.GetComponentsInChildren<Renderer>())
+                {
+                    if (r.bounds.size.y < 1.5f && Mathf.Max(r.bounds.size.x, r.bounds.size.z) > 200f)
+                    {
+                        Report.AppendLine($"[{name}] 摘除内嵌地面网格: {r.name}");
+                        r.gameObject.SetActive(false);
+                    }
+                }
+            }
             Bounds b0 = LocalBounds(go.transform);
             float s = targetMax / Mathf.Max(Mathf.Max(b0.size.x, b0.size.z), 0.01f);
             go.transform.localScale = Vector3.one * s;
@@ -315,7 +359,7 @@ namespace LunarQuest.EditorTools
             return go;
         }
 
-        static void PlaceNpc(string fileId, string display, Vector3 pos, Func<Vector3, float> ground)
+        static void PlaceNpc(string fileId, string display, Vector3 pos, Func<Vector3, float> ground, string line)
         {
             string path = $"{CharDir}/{fileId}.glb";
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
@@ -330,27 +374,51 @@ namespace LunarQuest.EditorTools
             go.transform.position = new Vector3(pos.x, ground(pos) - b.min.y, pos.z);
             var anim = go.GetComponent<Animator>() ?? go.AddComponent<Animator>();
             anim.runtimeAnimatorController = BuildNpcController(fileId, path);
-            anim.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
-            Report.AppendLine($"[NPC] {display} @ ({pos.x:F0},{pos.z:F0})，idle 循环");
+            anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            var stub = go.AddComponent<NpcDialogueStub>();
+            stub.animator = anim;
+            stub.line = line;
+            stub.prompt = $"与{display.Split('_')[0]}交谈（E）";
+            Report.AppendLine($"[NPC] {display} @ ({pos.x:F0},{pos.z:F0})，idle/talk，E 可交互");
         }
 
         static RuntimeAnimatorController BuildNpcController(string fileId, string glbPath)
         {
             string ctrlPath = $"Assets/_Project/Art/Animations/AC_{fileId}_Idle.controller";
-            var existing = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(ctrlPath);
-            if (existing != null) return existing;
+            var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>(ctrlPath);
+            if (ctrl == null)
+            {
+                ctrl = AnimatorController.CreateAnimatorControllerAtPath(ctrlPath);
+            }
 
-            AnimationClip idle = null;
+            AnimationClip idle = null, talk = null;
             foreach (var o in AssetDatabase.LoadAllAssetsAtPath(glbPath))
-                if (o is AnimationClip c && c.name.ToLower().Contains("idle")) { idle = c; break; }
+            {
+                if (!(o is AnimationClip c)) continue;
+                string n = c.name.ToLower();
+                if (idle == null && n.Contains("idle")) idle = c;
+                else if (talk == null && n.Contains("talk")) talk = c;
+            }
             if (idle == null)
             {
                 Debug.LogWarning("[WhiteboxBuilder] " + glbPath + " 中未找到 idle 动画");
-                return null;
+                return ctrl;
             }
             TrySetLoop(idle);
-            var ctrl = AnimatorController.CreateAnimatorControllerAtPath(ctrlPath);
-            ctrl.AddMotion(idle);
+
+            // 确保控制器里有命名规范的 idle/talk 状态（重建时对旧控制器补齐）
+            var sm = ctrl.layers[0].stateMachine;
+            void EnsureState(string name, AnimationClip clip)
+            {
+                if (clip == null) return;
+                foreach (var s in sm.states)
+                    if (s.state.name == name) return;
+                var st = sm.AddState(name);
+                st.motion = clip;
+                if (name == "idle" && sm.defaultState == null) sm.defaultState = st;
+            }
+            EnsureState("idle", idle);
+            EnsureState("talk", talk);
             return ctrl;
         }
 
@@ -421,12 +489,17 @@ namespace LunarQuest.EditorTools
 
         static void BuildMinimap(Transform player)
         {
-            var rt = new RenderTexture(512, 512, 24, RenderTextureFormat.ARGB32)
+            const string rtPath = "Assets/_Project/UI/RT_Minimap.renderTexture";
+            var rt = AssetDatabase.LoadAssetAtPath<RenderTexture>(rtPath);
+            if (rt == null)
             {
-                name = "RT_Minimap",
-                antiAliasing = 4,
-            };
-            AssetDatabase.CreateAsset(rt, "Assets/_Project/UI/RT_Minimap.renderTexture");
+                rt = new RenderTexture(512, 512, 24, RenderTextureFormat.ARGB32)
+                {
+                    name = "RT_Minimap",
+                    antiAliasing = 4,
+                };
+                AssetDatabase.CreateAsset(rt, rtPath);
+            }
 
             var camGo = new GameObject("MinimapCamera");
             var cam = camGo.AddComponent<Camera>();
