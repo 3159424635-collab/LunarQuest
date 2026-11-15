@@ -306,8 +306,14 @@ namespace LunarQuest.EditorTools
 
         static void BuildRover(Vector3 pos, Func<Vector3, float> ground, Transform player)
         {
-            string path = ModelDir + "/阿波罗月球车.fbx";
+            // 优先用经 Blender 转换瘦身的阿波罗真模型（SM_Rover_Apollo.glb），其次原始 FBX，最后白盒
+            string path = ModelDir + "/SM_Rover_Apollo.glb";
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab == null)
+            {
+                path = ModelDir + "/阿波罗月球车.fbx";
+                prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            }
             GameObject rover;
             float scale = 1f;
             if (prefab != null)
@@ -318,7 +324,7 @@ namespace LunarQuest.EditorTools
                 Bounds b0 = LocalBounds(rover.transform);
                 scale = 3.2f / Mathf.Max(Mathf.Max(b0.size.x, b0.size.z), 0.01f);
                 rover.transform.localScale = Vector3.one * scale;
-                Report.AppendLine($"[月球车] 阿波罗 FBX 包围盒 {b0.size:F1}m → 缩放 {scale:F3} 至 3.2m");
+                Report.AppendLine($"[月球车] 阿波罗真模型 包围盒 {b0.size:F1}m → 缩放 {scale:F3} 至 3.2m");
             }
             else
             {
