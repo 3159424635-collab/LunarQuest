@@ -1,0 +1,6 @@
+character_id,display_name,role,location,required,presentation,appearance,action_ids,body_bone_count,first_person_asset,first_person_action_ids,first_person_bone_count,animation_fps,status,game_integrated
+player_astronaut,玩家宇航员,第一人称玩家,全程,true,独立双臂与完整身体,白橘舱外服及金色面罩与背包,idle|walk|wave|talk|point|tablet|sample|receive|interact,20,first_person_arms,idle|walk|interact|sample,7,24,usable_blockout,false
+ground_flight_controller,林岚,地面飞控,发射场与无线电,true,可见角色与无线电,蓝色工装耳机及平板,idle|walk|wave|talk|point|tablet|sample|receive,20,,,,24,usable_blockout,false
+base_coordinator,周航,基地任务协调员,广寒站任务区,true,可见角色,橘色工装及平板,idle|walk|wave|talk|point|tablet|sample|receive,20,,,,24,usable_blockout,false
+lunar_scientist,许青,月球科学家,广寒站样本接收区,true,可见角色,白色外套配青色及样本罐,idle|walk|wave|talk|point|tablet|sample|receive,20,,,,24,usable_blockout,false
+maintenance_technician,陈越,设备维护员,车库或气闸及无线电,false,可见环境角色与无线电,深蓝黄色工作服及工具,idle|walk|wave|talk|point|tablet|sample|receive,20,,,,24,usable_blockout,false

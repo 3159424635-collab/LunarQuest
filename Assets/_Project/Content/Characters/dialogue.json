@@ -1,0 +1,465 @@
+{
+  "schema_version": "1.0.0",
+  "project": "月球计划",
+  "language": "zh-CN",
+  "status": "creative_draft",
+  "notes": [
+    "人物姓名、外观建议与台词为原创草案，角色职责与主流程依据用户提供的流程设计。",
+    "这是游戏端接入数据，不是已经运行的任务系统。语音、口型与科普视频不包含在本包中。",
+    "节点条件使用结构化字段，禁止将字符串作为代码执行。"
+  ],
+  "runtime_contract": {
+    "selection": "普通事件按 event 筛选节点，再对 conditions 全部求值，按 priority 从高到低取第一个。choice_continuation 节点只能由选项的 next_node 直接指定，不参与普通事件搜索；跳转前再次校验其 conditions。对话进行中不接受同一 NPC 的重复启动。",
+    "condition_fields": ["field", "operator", "value"],
+    "operators": ["eq", "lt", "gte"],
+    "effects": "选项效果仅在玩家确认选项时执行；节点完成效果在字幕或演出结束后执行。所有效果均应由游戏端做幂等检查。",
+    "state": {
+      "sample_task_accepted": false,
+      "sample_count": 0,
+      "sample_delivered": false,
+      "exhibit_complete": false,
+      "collected_point_ids": []
+    },
+    "sample_rules": {
+      "required_count": 3,
+      "unique_point_ids": ["crater03_sample_a", "crater03_sample_b", "crater03_sample_c"],
+      "success": "仅在任务已接取、交付尚未完成且当前点不在 collected_point_ids 时原子记录点 ID 并将 sample_count 加一，最大为三。",
+      "animation": "采样有效且按住 E 时，玩家播放 sample 循环；进度完成或取消后回到 idle。样本封存字幕在计数事务成功后触发 sample_committed。",
+      "cancel": "松开 E 停止 sample 动画；是否保留进度由游戏端统一配置，取消不增加 sample_count。",
+      "delivery": "交付前再次校验 sample_task_accepted 为 true、sample_count 至少为三且 sample_delivered 为 false；在同一事务中设置 sample_count 为零与 sample_delivered 为 true。"
+    }
+  },
+  "tasks": [
+    {"id": "T00_launch", "title": "发射前教学", "completion": "完成 WASD、鼠标观察、E 教学并触发发射", "next": "T10_lunar_orbit"},
+    {"id": "T10_lunar_orbit", "title": "绕月观察", "completion": "绕月演出完成", "next": "T20_landing"},
+    {"id": "T20_landing", "title": "安全着陆", "completion": "着陆小游戏成功", "next": "T30_eva"},
+    {"id": "T30_eva", "title": "月面出舱", "completion": "完成低重力教学并抵达广寒站", "next": "T31_base_briefing"},
+    {"id": "T31_base_briefing", "title": "接取采样任务", "completion": "确认 accept_sample_mission 选项", "next": "T32_sample_collection"},
+    {"id": "T32_sample_collection", "title": "三号陨石坑采样", "completion": "三个不同采样点各采样成功一次，共三份", "next": "T33_sample_delivery"},
+    {"id": "T33_sample_delivery", "title": "交付月壤样本", "completion": "sample_delivered 为 true", "next": "T34_exhibit"},
+    {"id": "T34_exhibit", "title": "参观科普展示厅", "completion": "展示装置交互完成后设 exhibit_complete 为 true", "next": "T40_return"},
+    {"id": "T40_return", "title": "返回地球", "completion": "返回演出结束并进入结算", "next": null}
+  ],
+  "characters": [
+    {"id": "player_astronaut", "name": "玩家宇航员", "fictional": true},
+    {"id": "ground_flight_controller", "name": "林岚", "fictional": true},
+    {"id": "base_coordinator", "name": "周航", "fictional": true},
+    {"id": "lunar_scientist", "name": "许青", "fictional": true},
+    {"id": "maintenance_technician", "name": "陈越", "fictional": true}
+  ],
+  "action_ids": ["idle", "walk", "wave", "talk", "point", "tablet", "sample", "receive", "interact"],
+  "nodes": [
+    {
+      "id": "launch_welcome",
+      "task_id": "T00_launch",
+      "event": "launch_tutorial_start",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "in_person",
+      "action": "wave",
+      "text": "欢迎加入任务。我是飞控林岚。先熟悉一下操作：用 WASD 移动，移动鼠标观察四周。"
+    },
+    {
+      "id": "launch_interaction_hint",
+      "task_id": "T00_launch",
+      "event": "movement_look_tutorial_complete",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "in_person",
+      "action": "point",
+      "text": "靠近发光的交互点，按 E 确认。准备好后，到观景平台集合。"
+    },
+    {
+      "id": "launch_ready",
+      "task_id": "T00_launch",
+      "event": "launch_platform_ready",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "radio",
+      "action": null,
+      "text": "发射准备完成。看向发射塔，我们即将出发。"
+    },
+    {
+      "id": "orbit_view_hint",
+      "task_id": "T10_lunar_orbit",
+      "event": "orbit_view_start",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "radio",
+      "action": null,
+      "text": "地球正在身后缩小。用左右方向键微调视角，看看我们的目的地。"
+    },
+    {
+      "id": "orbit_prepare_landing",
+      "task_id": "T10_lunar_orbit",
+      "event": "orbit_complete",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "radio",
+      "action": null,
+      "text": "已进入环月轨道，准备着陆。请留意下降速度和着陆腿应力。"
+    },
+    {
+      "id": "landing_hint",
+      "task_id": "T20_landing",
+      "event": "landing_minigame_start",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "radio",
+      "action": null,
+      "text": "用上下方向键调整反推，把速度和应力保持在安全范围。"
+    },
+    {
+      "id": "landing_retry",
+      "task_id": "T20_landing",
+      "event": "landing_failed",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "radio",
+      "action": null,
+      "text": "这次下降没有进入安全范围。重新调整推力，再试一次。"
+    },
+    {
+      "id": "landing_success",
+      "task_id": "T20_landing",
+      "event": "landing_succeeded",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "radio",
+      "action": null,
+      "text": "着陆确认。欢迎来到月球，广寒站正在等你。"
+    },
+    {
+      "id": "eva_hint",
+      "task_id": "T30_eva",
+      "event": "eva_tutorial_start",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "maintenance_technician",
+      "channel": "radio",
+      "action": null,
+      "text": "这里是广寒站机务。月面移动先放慢一点，熟悉落地节奏，再去月球车旁集合。"
+    },
+    {
+      "id": "rover_to_base",
+      "task_id": "T30_eva",
+      "event": "eva_tutorial_complete",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "maintenance_technician",
+      "channel": "radio",
+      "action": null,
+      "text": "车辆已就绪。跟着导航到广寒站，任务协调员会为你安排采样工作。"
+    },
+    {
+      "id": "coordinator_mission_offer",
+      "task_id": "T31_base_briefing",
+      "event": "interact_base_coordinator",
+      "priority": 100,
+      "conditions": [{"field": "sample_task_accepted", "operator": "eq", "value": false}],
+      "speaker": "base_coordinator",
+      "channel": "in_person",
+      "action": "talk",
+      "text": "欢迎来到广寒站。我是周航。请到 3 号陨石坑勘测点采集三份月壤样本，再交给站内的许青。",
+      "choices": [
+        {
+          "id": "accept_sample_mission",
+          "text": "确认，前往采样。",
+          "effects": [{"type": "set_state", "field": "sample_task_accepted", "value": true}],
+          "next_node": "coordinator_mission_accepted"
+        },
+        {"id": "defer_sample_mission", "text": "我先准备一下。", "effects": [], "next_node": "coordinator_mission_deferred"}
+      ]
+    },
+    {
+      "id": "coordinator_mission_accepted",
+      "task_id": "T32_sample_collection",
+      "event": "choice_continuation",
+      "priority": 100,
+      "conditions": [{"field": "sample_task_accepted", "operator": "eq", "value": true}],
+      "speaker": "base_coordinator",
+      "channel": "in_person",
+      "action": "point",
+      "text": "勘测点已标在导航上。到达后，靠近采样点并按住 E。留意岩石和地形起伏。"
+    },
+    {
+      "id": "coordinator_mission_deferred",
+      "task_id": "T31_base_briefing",
+      "event": "choice_continuation",
+      "priority": 100,
+      "conditions": [{"field": "sample_task_accepted", "operator": "eq", "value": false}],
+      "speaker": "base_coordinator",
+      "channel": "in_person",
+      "action": "idle",
+      "text": "好的，准备好后再来找我。"
+    },
+    {
+      "id": "coordinator_repeat_incomplete",
+      "task_id": "T32_sample_collection",
+      "event": "interact_base_coordinator",
+      "priority": 80,
+      "conditions": [
+        {"field": "sample_task_accepted", "operator": "eq", "value": true},
+        {"field": "sample_delivered", "operator": "eq", "value": false},
+        {"field": "sample_count", "operator": "lt", "value": 3}
+      ],
+      "speaker": "base_coordinator",
+      "channel": "in_person",
+      "action": "tablet",
+      "text": "任务仍在进行。请继续前往标记的采样点，集齐三份后回站。"
+    },
+    {
+      "id": "coordinator_repeat_ready",
+      "task_id": "T33_sample_delivery",
+      "event": "interact_base_coordinator",
+      "priority": 90,
+      "conditions": [
+        {"field": "sample_task_accepted", "operator": "eq", "value": true},
+        {"field": "sample_delivered", "operator": "eq", "value": false},
+        {"field": "sample_count", "operator": "gte", "value": 3}
+      ],
+      "speaker": "base_coordinator",
+      "channel": "in_person",
+      "action": "point",
+      "text": "三份样本已经齐了。请送到样本接收区，许青在那里等你。"
+    },
+    {
+      "id": "coordinator_after_delivery",
+      "task_id": "T34_exhibit",
+      "event": "interact_base_coordinator",
+      "priority": 110,
+      "conditions": [
+        {"field": "sample_delivered", "operator": "eq", "value": true},
+        {"field": "exhibit_complete", "operator": "eq", "value": false}
+      ],
+      "speaker": "base_coordinator",
+      "channel": "in_person",
+      "action": "point",
+      "text": "样本已完成交接。可以去科普展示厅看看，许青会为你介绍。"
+    },
+    {
+      "id": "coordinator_return_ready",
+      "task_id": "T40_return",
+      "event": "interact_base_coordinator",
+      "priority": 120,
+      "conditions": [
+        {"field": "sample_delivered", "operator": "eq", "value": true},
+        {"field": "exhibit_complete", "operator": "eq", "value": true}
+      ],
+      "speaker": "base_coordinator",
+      "channel": "in_person",
+      "action": "talk",
+      "text": "本次科考完成。请按导航返回，准备回家。"
+    },
+    {
+      "id": "crater_arrival",
+      "task_id": "T32_sample_collection",
+      "event": "enter_crater03_sampling_area",
+      "priority": 100,
+      "conditions": [
+        {"field": "sample_task_accepted", "operator": "eq", "value": true},
+        {"field": "sample_delivered", "operator": "eq", "value": false}
+      ],
+      "speaker": "maintenance_technician",
+      "channel": "radio",
+      "action": null,
+      "text": "勘测点到了。停稳后下车，靠近标记位置，按住 E 完成采样。"
+    },
+    {
+      "id": "sample_first",
+      "task_id": "T32_sample_collection",
+      "event": "sample_committed",
+      "priority": 100,
+      "conditions": [{"field": "sample_count", "operator": "eq", "value": 1}],
+      "speaker": "player_astronaut",
+      "channel": "subtitle",
+      "action": null,
+      "text": "第一份样本已封存。"
+    },
+    {
+      "id": "sample_second",
+      "task_id": "T32_sample_collection",
+      "event": "sample_committed",
+      "priority": 100,
+      "conditions": [{"field": "sample_count", "operator": "eq", "value": 2}],
+      "speaker": "player_astronaut",
+      "channel": "subtitle",
+      "action": null,
+      "text": "第二份样本已封存。"
+    },
+    {
+      "id": "sample_third",
+      "task_id": "T32_sample_collection",
+      "event": "sample_committed",
+      "priority": 100,
+      "conditions": [{"field": "sample_count", "operator": "eq", "value": 3}],
+      "speaker": "player_astronaut",
+      "channel": "subtitle",
+      "action": null,
+      "text": "三份样本齐了，返回广寒站。"
+    },
+    {
+      "id": "sample_duplicate",
+      "task_id": "T32_sample_collection",
+      "event": "interact_collected_sample_point",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "player_astronaut",
+      "channel": "subtitle",
+      "action": "idle",
+      "text": "此点已完成采样，请前往其他标记。"
+    },
+    {
+      "id": "scientist_before_mission",
+      "task_id": "T31_base_briefing",
+      "event": "interact_lunar_scientist",
+      "priority": 80,
+      "conditions": [{"field": "sample_task_accepted", "operator": "eq", "value": false}],
+      "speaker": "lunar_scientist",
+      "channel": "in_person",
+      "action": "point",
+      "text": "你好，我是许青。先去找任务区的周航，他会告诉你这次的采样目标。"
+    },
+    {
+      "id": "scientist_insufficient_samples",
+      "task_id": "T32_sample_collection",
+      "event": "interact_lunar_scientist",
+      "priority": 90,
+      "conditions": [
+        {"field": "sample_task_accepted", "operator": "eq", "value": true},
+        {"field": "sample_delivered", "operator": "eq", "value": false},
+        {"field": "sample_count", "operator": "lt", "value": 3}
+      ],
+      "speaker": "lunar_scientist",
+      "channel": "in_person",
+      "action": "talk",
+      "text": "还差一些样本。请按导航补齐三份，我们再一起检查。"
+    },
+    {
+      "id": "scientist_delivery_offer",
+      "task_id": "T33_sample_delivery",
+      "event": "interact_lunar_scientist",
+      "priority": 100,
+      "conditions": [
+        {"field": "sample_task_accepted", "operator": "eq", "value": true},
+        {"field": "sample_delivered", "operator": "eq", "value": false},
+        {"field": "sample_count", "operator": "gte", "value": 3}
+      ],
+      "speaker": "lunar_scientist",
+      "channel": "in_person",
+      "action": "talk",
+      "text": "三份样本都到了。辛苦了，我来接收并登记。",
+      "choices": [
+        {
+          "id": "deliver_three_samples",
+          "text": "交付三份月壤样本。",
+          "effects": [{"type": "deliver_samples_once", "required_count": 3}],
+          "next_node": "scientist_delivery_complete",
+          "on_effect_rejected": "close_and_refresh_interaction"
+        },
+        {"id": "defer_sample_delivery", "text": "稍后再交付。", "effects": [], "next_node": null}
+      ]
+    },
+    {
+      "id": "scientist_delivery_complete",
+      "task_id": "T34_exhibit",
+      "event": "choice_continuation",
+      "priority": 100,
+      "conditions": [{"field": "sample_delivered", "operator": "eq", "value": true}],
+      "speaker": "lunar_scientist",
+      "channel": "in_person",
+      "action": "receive",
+      "paired_player_action": "interact",
+      "text": "样本已接收。接下来可以去科普展示厅，看看探月任务如何把这些线索带回地球。"
+    },
+    {
+      "id": "scientist_repeat_completed",
+      "task_id": "T34_exhibit",
+      "event": "interact_lunar_scientist",
+      "priority": 110,
+      "conditions": [{"field": "sample_delivered", "operator": "eq", "value": true}],
+      "speaker": "lunar_scientist",
+      "channel": "in_person",
+      "action": "point",
+      "text": "你的样本已经登记好了。展示厅就在前方，随时可以参观。"
+    },
+    {
+      "id": "exhibit_intro",
+      "task_id": "T34_exhibit",
+      "event": "exhibit_interaction_start",
+      "priority": 100,
+      "conditions": [
+        {"field": "sample_delivered", "operator": "eq", "value": true},
+        {"field": "exhibit_complete", "operator": "eq", "value": false}
+      ],
+      "speaker": "lunar_scientist",
+      "channel": "radio",
+      "action": null,
+      "text": "每一次观察和采样，都在帮助我们认识月球。请看展示，了解探月任务的更多故事。"
+    },
+    {
+      "id": "exhibit_finished",
+      "task_id": "T40_return",
+      "event": "exhibit_interaction_completed",
+      "priority": 100,
+      "conditions": [{"field": "sample_delivered", "operator": "eq", "value": true}],
+      "speaker": "base_coordinator",
+      "channel": "radio",
+      "action": null,
+      "text": "本次科考完成。请按导航返回，准备回家。",
+      "on_complete_effects": [{"type": "set_state", "field": "exhibit_complete", "value": true}]
+    },
+    {
+      "id": "maintenance_hint",
+      "task_id": "T32_sample_collection",
+      "event": "interact_maintenance_technician",
+      "priority": 90,
+      "conditions": [{"field": "sample_delivered", "operator": "eq", "value": false}],
+      "speaker": "maintenance_technician",
+      "channel": "in_person",
+      "action": "tablet",
+      "text": "车辆和工具都准备好了。开车时留意岩石，下车后再进行采样。"
+    },
+    {
+      "id": "maintenance_after_mission",
+      "task_id": "T34_exhibit",
+      "event": "interact_maintenance_technician",
+      "priority": 100,
+      "conditions": [{"field": "sample_delivered", "operator": "eq", "value": true}],
+      "speaker": "maintenance_technician",
+      "channel": "in_person",
+      "action": "wave",
+      "text": "欢迎回来，采样辛苦了。设备交给我，你去看看展示厅吧。"
+    },
+    {
+      "id": "return_start",
+      "task_id": "T40_return",
+      "event": "return_sequence_start",
+      "priority": 100,
+      "conditions": [{"field": "exhibit_complete", "operator": "eq", "value": true}],
+      "speaker": "ground_flight_controller",
+      "channel": "radio",
+      "action": null,
+      "text": "返航流程已确认。带着今天的收获，我们回家。"
+    },
+    {
+      "id": "return_success",
+      "task_id": "T40_return",
+      "event": "earth_landing_complete",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "radio",
+      "action": null,
+      "text": "欢迎回到地球。任务完成，感谢你的参与。"
+    }
+  ]
+}
