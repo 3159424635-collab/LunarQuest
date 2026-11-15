@@ -46,12 +46,13 @@ namespace LunarQuest.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             BuildLighting();
+            BuildSkybox();
             Terrain terrain = BuildTerrain();
             float Ground(Vector3 p) => terrain.SampleHeight(p) + terrain.transform.position.y;
 
             var player = BuildPlayer(new Vector3(0f, 0f, 150f), Ground);
             BuildRover(new Vector3(24f, 0f, 156f), Ground, player.transform);
-            PlaceModel(ModelDir + "/月球基地.fbx", 46f, new Vector3(-6f, 0f, 178f), Ground, "MoonBase", true, true);
+            BuildKenneyBase(Ground);
             PlaceModel(ModelDir + "/毅力号.fbx", 2.7f, new Vector3(14f, 0f, 150f), Ground, "Exhibit_Perseverance", false, false);
             PlaceNpc("base_coordinator", "周航_协调员", new Vector3(2f, 0f, 158f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
             PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(-9f, 0f, 162f), Ground, "样本先放我这里，参观完科普厅再走。");
@@ -65,6 +66,7 @@ namespace LunarQuest.EditorTools
             const string scenePath = "Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity";
             EditorSceneManager.SaveScene(scene, scenePath);
             SetBuildScenes(scenePath);
+            RenderPreviews();
             Directory.CreateDirectory("Logs");
             File.WriteAllText("Logs/whitebox_report.txt", Report.ToString());
             Debug.Log("[WhiteboxBuilder] 搭建完成\n" + Report);
@@ -87,7 +89,96 @@ namespace LunarQuest.EditorTools
             sun.shadows = LightShadows.Soft;
             sun.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.16f, 0.17f, 0.22f);
+            RenderSettings.ambientLight = new Color(0.13f, 0.14f, 0.18f); // 月面夜空环境光
+        }
+
+        // 星空天空盒：Poly Haven CC0 纯星空全景图（无地面）
+        static void BuildSkybox()
+        {
+            const string texPath = "Assets/_Project/Art/Textures/Stars_PureSky_2k.hdr";
+            var tex = AssetDatabase.LoadAssetAtPath<Texture>(texPath);
+            if (tex == null)
+            {
+                Debug.LogWarning("[WhiteboxBuilder] 找不到星空贴图 " + texPath);
+                return;
+            }
+            const string matPath = "Assets/_Project/Art/Materials/Skybox_Stars.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (mat == null)
+            {
+                mat = new Material(Shader.Find("Skybox/Panoramic")) { name = "Skybox_Stars" };
+                AssetDatabase.CreateAsset(mat, matPath);
+            }
+            mat.SetTexture("_MainTex", tex);
+            mat.SetFloat("_Exposure", 0.85f);
+            RenderSettings.skybox = mat;
+        }
+
+        const string KenneyDir = "Assets/Kenney Assets/Space Kit/Models";
+
+        // 低模广寒站：Kenney CC0 模块拼装。主舱为竖直地标塔（按高度归一化限高），
+        // 两侧横置舱段 + 走廊 + 大型天线。
+        static void BuildKenneyBase(Func<Vector3, float> ground)
+        {
+            // station 是竖直塔形件：按高度归一化（12m 高），避免横向归一化导致 30m 高楼
+            PlaceKenneyHeight("station", 12f, new Vector3(-4f, 0f, 184f), ground, "Base_MainHall", true);
+            PlaceKenney("buildingOpen", 9f, new Vector3(-22f, 0f, 178f), ground, "Base_ModuleA", true, new Vector3(0f, 90f, 0f));
+            PlaceKenney("buildingOpen", 9f, new Vector3(14f, 0f, 178f), ground, "Base_ModuleB", true, new Vector3(0f, 90f, 0f));
+            PlaceKenney("buildingCorridorOpen", 7f, new Vector3(-13f, 0f, 178f), ground, "Base_LinkA", false, new Vector3(0f, 90f, 0f));
+            PlaceKenney("buildingCorridorOpen", 7f, new Vector3(5f, 0f, 178f), ground, "Base_LinkB", false, new Vector3(0f, 90f, 0f));
+            PlaceKenney("satelliteDishLarge", 5f, new Vector3(24f, 0f, 172f), ground, "Base_Antenna", false, null);
+
+            // 展览区（AR 展品占位）：围栏 + 两艘微缩飞船
+            for (int i = 0; i < 4; i++)
+            {
+                var rot = new Vector3(0f, i * 90f, 0f);
+                Vector3 pos = i switch
+                {
+                    0 => new Vector3(-4f, 0f, 158f),
+                    1 => new Vector3(6f, 0f, 168f),
+                    2 => new Vector3(-4f, 0f, 178f - 0.1f),
+                    _ => new Vector3(-14f, 0f, 168f),
+                };
+                PlaceKenney("metalFence", 10f, pos, ground, "Exhibit_Fence_" + i, false, rot);
+            }
+            PlaceKenney("spaceCraft1", 2.2f, new Vector3(-7f, 0f, 168f), ground, "Exhibit_Ship1", false, null);
+            PlaceKenney("spaceCraft2", 2.2f, new Vector3(-1f, 0f, 168f), ground, "Exhibit_Ship2", false, null);
+            Report.AppendLine("[基地] Kenney CC0 模块拼装低模广寒站（地标塔+双舱段+走廊+天线）+ 展览区围栏与两件微缩展品占位");
+        }
+
+        // 按高度归一化：用于竖直造型的构件（塔、天线杆等），避免按横向归一化时高度失控
+        static GameObject PlaceKenneyHeight(string model, float targetHeight, Vector3 pos,
+            Func<Vector3, float> ground, string name, bool addCollider)
+        {
+            string path = $"{KenneyDir}/{model}.fbx";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab == null)
+            {
+                Debug.LogError("[WhiteboxBuilder] 找不到 " + path);
+                return null;
+            }
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            go.name = name;
+            go.transform.position = Vector3.zero;
+            Bounds b0 = LocalBounds(go.transform);
+            float s = targetHeight / Mathf.Max(b0.size.y, 0.01f);
+            go.transform.localScale = Vector3.one * s;
+            Bounds b1 = LocalBounds(go.transform);
+            go.transform.position = new Vector3(pos.x, ground(pos) - b1.min.y, pos.z);
+            if (addCollider)
+            {
+                var box = go.AddComponent<BoxCollider>();
+                box.center = new Vector3(b1.center.x / s, b1.center.y / s, b1.center.z / s);
+                box.size = new Vector3(b1.size.x / s, b1.size.y / s, b1.size.z / s);
+            }
+            Report.AppendLine($"[{name}] 高度归一 {b0.size:F1}m ×{s:F2} → {b1.size:F1}m，落点 ({pos.x:F0},{pos.z:F0})");
+            return go;
+        }
+
+        static GameObject PlaceKenney(string model, float targetMax, Vector3 pos,
+            Func<Vector3, float> ground, string name, bool addCollider, Vector3? rotEuler)
+        {
+            return PlaceModel($"{KenneyDir}/{model}.fbx", targetMax, pos, ground, name, addCollider, false, rotEuler);
         }
 
         static Terrain BuildTerrain()
@@ -316,7 +407,7 @@ namespace LunarQuest.EditorTools
         }
 
         static GameObject PlaceModel(string path, float targetMax, Vector3 pos,
-            Func<Vector3, float> ground, string name, bool addCollider, bool stripGround = false)
+            Func<Vector3, float> ground, string name, bool addCollider, bool stripGround = false, Vector3? rotEuler = null)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab == null)
@@ -346,6 +437,7 @@ namespace LunarQuest.EditorTools
             go.transform.localScale = Vector3.one * s;
             Bounds b1 = LocalBounds(go.transform);
             go.transform.position = new Vector3(pos.x, ground(pos) - b1.min.y, pos.z);
+            if (rotEuler.HasValue) go.transform.rotation = Quaternion.Euler(rotEuler.Value);
             if (addCollider)
             {
                 var box = go.AddComponent<BoxCollider>();
@@ -451,20 +543,20 @@ namespace LunarQuest.EditorTools
                 marker.transform.position = pts[i];
                 var p = pts[i];
 
-                var rock = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                rock.name = "SampleRock_" + tags[i];
-                rock.transform.localScale = new Vector3(0.7f, 0.45f, 0.7f);
-                rock.transform.position = new Vector3(p.x, ground(p) + 0.25f, p.z);
-                rock.transform.rotation = Quaternion.Euler(6f * i, 40f * i, 5f * i);
-                if (mat != null) rock.GetComponent<Renderer>().sharedMaterial = mat;
-                rock.AddComponent<SampleRock>().prompt = $"按 E 采集月壤样本（{i + 1}/3）";
+                var rock = PlaceKenney("rocksSmall", 0.9f, p, ground, "SampleRock_" + tags[i], true,
+                    new Vector3(0f, 37f * i, 0f));
+                if (rock != null)
+                {
+                    rock.AddComponent<SampleRock>().prompt = $"按 E 采集月壤样本（{i + 1}/3）";
+                }
             }
-            Report.AppendLine("[采样] 3 号坑内 3 个采样点 + 可交互样本石");
+            Report.AppendLine("[采样] 3 号坑内 3 个采样点 + 可交互样本石（Kenney 岩石模型）");
         }
+
+        static readonly string[] RockVariants = { "rocks", "rocksSmall", "rocksTall", "rocksOre", "meteorHalf" };
 
         static void BuildRockField(Func<Vector3, float> ground)
         {
-            var mat = AssetDatabase.LoadAssetAtPath<Material>(MoonMatPath);
             var rng = new System.Random(20261115);
             int placed = 0, tries = 0;
             while (placed < 26 && tries < 200)
@@ -473,18 +565,14 @@ namespace LunarQuest.EditorTools
                 float x = 150f + (float)(rng.NextDouble() * 2 - 1) * 45f;
                 float z = -80f + (float)(rng.NextDouble() * 2 - 1) * 45f;
                 if (Dist(x, z, LandingFlat) < LandingFlatR + 8f) continue;
-                var rock = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                rock.name = $"Rock_{placed + 1:00}";
-                float sx = 0.5f + (float)rng.NextDouble() * 2.5f;
-                float sy = 0.35f + (float)rng.NextDouble() * 1.05f;
-                rock.transform.localScale = new Vector3(sx, sy, sx * (0.7f + (float)rng.NextDouble() * 0.6f));
+                string variant = RockVariants[rng.Next(RockVariants.Length)];
+                float size = 1.2f + (float)rng.NextDouble() * 2.3f;
                 var p = new Vector3(x, 0f, z);
-                rock.transform.position = new Vector3(x, ground(p) + sy * 0.4f, z);
-                rock.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 10f, rng.Next(0, 180), (float)rng.NextDouble() * 8f);
-                if (mat != null) rock.GetComponent<Renderer>().sharedMaterial = mat;
+                PlaceKenney(variant, size, p, ground, $"Rock_{placed + 1:00}", true,
+                    new Vector3(0f, rng.Next(0, 360), 0f));
                 placed++;
             }
-            Report.AppendLine($"[乱石区] 东侧 26 块带碰撞岩石（{placed} 块落位）");
+            Report.AppendLine($"[乱石区] 东侧 26 块带碰撞岩石（{placed} 块落位，Kenney 变体）");
         }
 
         static void BuildMinimap(Transform player)
@@ -514,6 +602,39 @@ namespace LunarQuest.EditorTools
             var mm = camGo.AddComponent<MinimapController>();
             mm.target = player;
             Report.AppendLine("[小地图] 正交相机 512 RenderTexture，M 键切换缩放；界面呈现由模块四接入");
+        }
+
+        // 构建产物预览：基地鸟瞰 + 出生点视角两张截图，便于不开编辑器确认效果
+        static void RenderPreviews()
+        {
+            var rt = new RenderTexture(1280, 720, 24);
+            var camGo = new GameObject("PreviewCam");
+            var cam = camGo.AddComponent<Camera>();
+            cam.nearClipPlane = 0.1f;
+            cam.farClipPlane = 1200f;
+            cam.fieldOfView = 55f;
+            cam.targetTexture = rt;
+
+            (Vector3 pos, Vector3 look)[] views =
+            {
+                (new Vector3(-4f, 55f, 120f), new Vector3(-4f, 2f, 172f)),   // 基地鸟瞰
+                (new Vector3(0f, 8f, 148f), new Vector3(-4f, 3f, 178f)),     // 出生点望向基地
+            };
+            for (int i = 0; i < views.Length; i++)
+            {
+                cam.transform.position = views[i].pos;
+                cam.transform.LookAt(views[i].look);
+                cam.Render();
+                RenderTexture.active = rt;
+                var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
+                tex.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
+                tex.Apply();
+                File.WriteAllBytes($"Logs/scene_preview_{i}.png", tex.EncodeToPNG());
+                UnityEngine.Object.DestroyImmediate(tex);
+            }
+            cam.targetTexture = null;
+            rt.Release();
+            UnityEngine.Object.DestroyImmediate(camGo);
         }
 
         static void SetBuildScenes(string s4Path)
