@@ -1,0 +1,123 @@
+{
+  "voices": [
+    {
+      "phase": "Launch",
+      "at": 0,
+      "text": "广寒任务，发射准备就绪。",
+      "file": "VO_Launch_01.wav",
+      "duration": 3.529138321995465
+    },
+    {
+      "phase": "Launch",
+      "at": 7,
+      "text": "各系统状态正常，进入最后倒计时。",
+      "file": "VO_Launch_02.wav",
+      "duration": 4.6689795918367345
+    },
+    {
+      "phase": "Launch",
+      "at": 18,
+      "text": "点火，推力正常。",
+      "file": "VO_Launch_03.wav",
+      "duration": 2.744285714285714
+    },
+    {
+      "phase": "Launch",
+      "at": 26,
+      "text": "起飞！月征一号，飞向月球。",
+      "file": "VO_Launch_04.wav",
+      "duration": 4.519115646258504
+    },
+    {
+      "phase": "Launch",
+      "at": 43,
+      "text": "姿态稳定，进入预定上升段。",
+      "file": "VO_Launch_05.wav",
+      "duration": 3.639138321995465
+    },
+    {
+      "phase": "Launch",
+      "at": 54,
+      "text": "地月转移窗口已开启，祝一切顺利。",
+      "file": "VO_Launch_06.wav",
+      "duration": 4.368956916099774
+    },
+    {
+      "phase": "Orbit",
+      "at": 0,
+      "text": "进入环月轨道。",
+      "file": "VO_Orbit_01.wav",
+      "duration": 2.2393197278911563
+    },
+    {
+      "phase": "Orbit",
+      "at": 9,
+      "text": "地球正从月面地平线升起，开始记录。",
+      "file": "VO_Orbit_02.wav",
+      "duration": 4.704036281179138
+    },
+    {
+      "phase": "Orbit",
+      "at": 23,
+      "text": "相机已锁定广寒站方向，准备下降。",
+      "file": "VO_Orbit_03.wav",
+      "duration": 4.563922902494331
+    },
+    {
+      "phase": "Return",
+      "at": 0,
+      "text": "样本已装载，准备离开月球。",
+      "file": "VO_Return_01.wav",
+      "duration": 3.8691156462585035
+    },
+    {
+      "phase": "Return",
+      "at": 9,
+      "text": "上升器点火，开始轨道交会。",
+      "file": "VO_Return_02.wav",
+      "duration": 3.889138321995465
+    },
+    {
+      "phase": "Return",
+      "at": 22,
+      "text": "进入再入走廊，防热系统正常。",
+      "file": "VO_Return_03.wav",
+      "duration": 4.209160997732426
+    },
+    {
+      "phase": "Return",
+      "at": 33,
+      "text": "主伞展开，下降速度稳定。",
+      "file": "VO_Return_04.wav",
+      "duration": 3.519047619047619
+    },
+    {
+      "phase": "Return",
+      "at": 41,
+      "text": "欢迎回家。",
+      "file": "VO_Return_05.wav",
+      "duration": 1.8343083900226758
+    },
+    {
+      "phase": "HUD",
+      "at": 1,
+      "text": "欢迎来到广寒站。",
+      "file": "VO_HUD_01.wav",
+      "duration": 2.464172335600907
+    },
+    {
+      "phase": "HUD",
+      "at": 12,
+      "text": "交互界面已就绪，请前往三号勘测点。",
+      "file": "VO_HUD_02.wav",
+      "duration": 4.998979591836735
+    },
+    {
+      "phase": "HUD",
+      "at": 25,
+      "text": "月壤样本已采集，任务完成。",
+      "file": "VO_HUD_03.wav",
+      "duration": 3.8091156462585034
+    }
+  ]
+}
