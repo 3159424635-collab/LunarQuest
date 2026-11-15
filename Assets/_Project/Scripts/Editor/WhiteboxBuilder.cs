@@ -205,7 +205,7 @@ namespace LunarQuest.EditorTools
                 float bodyScale = 1.8f / Mathf.Max(bb.size.y, 0.01f);
                 body.transform.localScale = Vector3.one * bodyScale;
                 bb = LocalBounds(body.transform);
-                body.transform.localPosition += Vector3.up * ((player.position.y - 0.9f) - bb.min.y);
+                body.transform.localPosition += Vector3.up * ((player.transform.position.y - 0.9f) - bb.min.y);
                 body.SetActive(false);
                 player.GetComponent<FirstPersonController>().thirdPersonBody = body;
             }

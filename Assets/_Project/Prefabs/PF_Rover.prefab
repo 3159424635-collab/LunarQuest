@@ -862,6 +862,7 @@ GameObject:
   - component: {fileID: 2967216230289799969}
   - component: {fileID: 2498337116468366824}
   - component: {fileID: 2375380777904738423}
+  - component: {fileID: 5281253651638159503}
   m_Layer: 0
   m_Name: PF_Rover
   m_TagString: Untagged
@@ -981,3 +982,17 @@ MonoBehaviour:
   enterRange: 3.5
   toggleKey: 102
   exitOffset: {x: -2.5, y: 0, z: 0}
+--- !u!114 &5281253651638159503
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9160173518967849253}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e612b33a7338d194eb06d59332b733db, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prompt: "\u6309 F \u6216 E \u4E0A\u4E0B\u8F66"
+  vehicle: {fileID: 2375380777904738423}
