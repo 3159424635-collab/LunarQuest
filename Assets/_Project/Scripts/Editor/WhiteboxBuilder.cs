@@ -154,7 +154,7 @@ namespace LunarQuest.EditorTools
             }
             var layer = new TerrainLayer
             {
-                albedoMap = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath),
+                diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath),
                 tileSize = new Vector2(30f, 30f),
             };
             AssetDatabase.CreateAsset(layer, "Assets/_Project/Art/Textures/TL_MoonGray.asset");
@@ -190,18 +190,24 @@ namespace LunarQuest.EditorTools
         {
             string path = ModelDir + "/阿波罗月球车.fbx";
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            if (prefab == null)
+            GameObject rover;
+            float scale = 1f;
+            if (prefab != null)
             {
-                Debug.LogError("[WhiteboxBuilder] 找不到 " + path);
-                return;
+                rover = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                rover.transform.position = Vector3.zero;
+                rover.transform.localScale = Vector3.one;
+                Bounds b0 = LocalBounds(rover.transform);
+                scale = 3.2f / Mathf.Max(Mathf.Max(b0.size.x, b0.size.z), 0.01f);
+                rover.transform.localScale = Vector3.one * scale;
+                Report.AppendLine($"[月球车] 阿波罗 FBX 包围盒 {b0.size:F1}m → 缩放 {scale:F3} 至 3.2m");
             }
-            var rover = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-            rover.name = "Rover_Apollo";
-            rover.transform.position = Vector3.zero;
-            rover.transform.localScale = Vector3.one;
-            Bounds b0 = LocalBounds(rover.transform);
-            float scale = 3.2f / Mathf.Max(Mathf.Max(b0.size.x, b0.size.z), 0.01f);
-            rover.transform.localScale = Vector3.one * scale;
+            else
+            {
+                rover = BuildProceduralRover();
+                Report.AppendLine("[月球车] 阿波罗 FBX 待瘦身（导入超时已摘除），改用白盒车身，脚本挂载完全一致");
+            }
+            rover.name = "Rover";
             Bounds b1 = LocalBounds(rover.transform);
             rover.transform.position = new Vector3(pos.x, ground(pos) - b1.min.y + 0.05f, pos.z);
 
@@ -224,8 +230,58 @@ namespace LunarQuest.EditorTools
             enterExit.player = player;
             enterExit.roverCamera = rc;
 
-            PrefabUtility.SaveAsPrefabAsset(rover, "Assets/_Project/Prefabs/PF_Rover_Apollo.prefab");
-            Report.AppendLine($"[月球车] 阿波罗 FBX 包围盒 {b0.size:F1}m → 缩放 {scale:F3} 至 3.2m；碰撞/刚体/驾驶/上下车已挂");
+            PrefabUtility.SaveAsPrefabAsset(rover, "Assets/_Project/Prefabs/PF_Rover.prefab");
+        }
+
+        // 白盒月球车：模块二正式模型就位前的驾驶验证用车身
+        static GameObject BuildProceduralRover()
+        {
+            var root = new GameObject("Rover");
+            var bodyMat = LoadOrCreateMat("M_RoverBody", new Color(0.82f, 0.44f, 0.16f));
+            var darkMat = LoadOrCreateMat("M_RoverDark", new Color(0.18f, 0.20f, 0.24f));
+
+            void Part(PrimitiveType type, string name, Vector3 scale, Vector3 localPos, Material mat,
+                bool keepCollider = false, Vector3? rot = null)
+            {
+                var p = GameObject.CreatePrimitive(type);
+                p.name = name;
+                p.transform.SetParent(root.transform, false);
+                p.transform.localScale = scale;
+                p.transform.localPosition = localPos;
+                if (rot.HasValue) p.transform.localRotation = Quaternion.Euler(rot.Value);
+                p.GetComponent<Renderer>().sharedMaterial = mat;
+                if (!keepCollider)
+                {
+                    var col = p.GetComponent<Collider>();
+                    if (col != null) UnityEngine.Object.DestroyImmediate(col);
+                }
+            }
+
+            Part(PrimitiveType.Cube, "Body", new Vector3(1.6f, 0.45f, 2.4f), new Vector3(0f, 0.72f, 0f), bodyMat);
+            Part(PrimitiveType.Cube, "Chassis", new Vector3(1.2f, 0.3f, 2.0f), new Vector3(0f, 0.45f, 0f), darkMat);
+            Part(PrimitiveType.Cube, "Seat", new Vector3(0.5f, 0.5f, 0.5f), new Vector3(0f, 1.1f, 0.35f), darkMat);
+            Part(PrimitiveType.Cube, "AntennaMast", new Vector3(0.06f, 1.0f, 0.06f), new Vector3(-0.6f, 1.35f, -0.9f), darkMat);
+            Part(PrimitiveType.Cube, "AntennaDish", new Vector3(0.5f, 0.06f, 0.5f), new Vector3(-0.6f, 1.85f, -0.9f), darkMat);
+            for (int i = 0; i < 4; i++)
+            {
+                Part(PrimitiveType.Cylinder, "Wheel_" + (i + 1),
+                    new Vector3(0.72f, 0.12f, 0.72f),
+                    new Vector3(i % 2 == 0 ? -0.95f : 0.95f, 0.36f, i < 2 ? 0.85f : -0.85f),
+                    darkMat, false, new Vector3(0f, 0f, 90f));
+            }
+            return root;
+        }
+
+        static Material LoadOrCreateMat(string name, Color color)
+        {
+            string p = $"Assets/_Project/Art/Materials/{name}.mat";
+            var m = AssetDatabase.LoadAssetAtPath<Material>(p);
+            if (m != null) return m;
+            Directory.CreateDirectory("Assets/_Project/Art/Materials");
+            m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name };
+            m.SetColor("_BaseColor", color);
+            AssetDatabase.CreateAsset(m, p);
+            return m;
         }
 
         static GameObject PlaceModel(string path, float targetMax, Vector3 pos,
@@ -365,12 +421,11 @@ namespace LunarQuest.EditorTools
 
         static void BuildMinimap(Transform player)
         {
-            var rt = ScriptableObject.CreateInstance<RenderTexture>();
-            rt.name = "RT_Minimap";
-            rt.width = 512;
-            rt.height = 512;
-            rt.depth = 24;
-            rt.format = RenderTextureFormat.ARGB32;
+            var rt = new RenderTexture(512, 512, 24, RenderTextureFormat.ARGB32)
+            {
+                name = "RT_Minimap",
+                antiAliasing = 4,
+            };
             AssetDatabase.CreateAsset(rt, "Assets/_Project/UI/RT_Minimap.renderTexture");
 
             var camGo = new GameObject("MinimapCamera");

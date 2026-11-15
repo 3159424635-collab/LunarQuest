@@ -43,3 +43,6 @@ Build/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# 导入超时待瘦身的模型暂不入库
+*.fbx.off

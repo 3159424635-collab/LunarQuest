@@ -31,7 +31,7 @@ namespace LunarQuest
             {
                 // 世界坐标 → 底图局部坐标（-0.5~+0.5），再乘底图尺寸换算为像素
                 Vector2 local = MinimapController.WorldToMinimapLocal(
-                    questTarget.position, minimap.target, minimap.orthographicSize);
+                    questTarget.position, minimap.target, minimap.CurrentOrthoSize);
                 float size = mapImage.rect.width != 0f ? mapImage.rect.width : 220f;
                 Vector2 p = local * size;
 

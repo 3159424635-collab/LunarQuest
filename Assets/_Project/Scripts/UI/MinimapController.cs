@@ -21,6 +21,9 @@ namespace LunarQuest
         public float zoomedViewSize = 25f;
         public KeyCode toggleKey = KeyCode.M;
 
+        /// <summary>当前实际使用的正交视野半径（供 UI 层换算图标位置）。</summary>
+        public float CurrentOrthoSize => zoomed ? zoomedViewSize : viewSize;
+
         Camera cam;
         bool zoomed;
 
