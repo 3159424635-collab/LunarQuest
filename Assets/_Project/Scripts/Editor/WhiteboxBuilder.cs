@@ -587,15 +587,22 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             baseGo.transform.localScale = Vector3.one * 2f;   // 整体放大两倍
             Bounds b = LocalBounds(baseGo.transform);
             baseGo.transform.position = new Vector3(-4f, ground(new Vector3(-4f, 0f, 178f)) - b.min.y, 178f);
-            // 全网格碰撞（含玻璃和桁架）：防护罩是实体屏障，通行只能走气闸的布尔切洞
+            // 玻璃半球和桁架不加碰撞体（方案B：纯视觉，物理由隐形密封墙承担）
+            // 穹顶弧板墙、气闸箱体、走廊、地板等正常加碰撞体
             int colliders = 0;
             foreach (var mf in baseGo.GetComponentsInChildren<MeshFilter>())
             {
                 if (mf.GetComponent<MeshCollider>() == null && mf.sharedMesh != null)
                 {
-                    var mc = mf.gameObject.AddComponent<MeshCollider>();
-                    mc.sharedMesh = mf.sharedMesh;
-                    colliders++;
+                    string mn = mf.name;
+                    bool isVisualOnly = mn.Contains("Glass_Hemisphere") || mn.Contains("Glass_Lattice") ||
+                                        mn.Contains("LatticeH_") || mn.Contains("LatticeV_");
+                    if (!isVisualOnly)
+                    {
+                        var mc = mf.gameObject.AddComponent<MeshCollider>();
+                        mc.sharedMesh = mf.sharedMesh;
+                        colliders++;
+                    }
                 }
             }
             Report.AppendLine($"[基地] 自建参数化广寒站 ×2 放大（玻璃罩 r52/穹顶 r15/舱段 26m），网格碰撞 {colliders} 处");
