@@ -286,7 +286,7 @@ namespace LunarQuest.EditorTools
         {
             const float cx = -4f, cz = 158f;
             float y0 = ground(new Vector3(cx, 0f, cz));
-            var hall = PlaceModel("Assets/_Project/Art/Models/Sketchfab/command_center_interior/SM_Hall_Interior.glb",
+            var hall = PlaceModel("Assets/_Project/Art/Models/Sketchfab/command_center_interior/SM_Hall_Ext.glb",
                 22f, new Vector3(cx, 0f, cz), ground, "ExhibitHall", false, false);
             if (hall == null) return;
 
