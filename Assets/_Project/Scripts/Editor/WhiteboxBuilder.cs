@@ -261,28 +261,36 @@ namespace LunarQuest.EditorTools
             return PlaceModel($"{StationDir}/{model}.fbx", targetMax, pos, ground, name, addCollider, false, rotEuler);
         }
 
-        // 展览舱（AR 展品区）：16×12m 可进入舱段，地板/墙面/窗/门/天花板 + 展台 + 中央展品 + 室内灯光
+        // 展览舱：指挥中心内景（99.1 万面，CC-BY）经 Blender 切出南门洞的版本。
+        // 碰撞不用整体包围盒，改为留门缝的拼装式围合。
         static void BuildExhibitHall(Func<Vector3, float> ground)
         {
-            const float cx = -4f, cz = 158f;          // 舱中心
-            float baseY = ground(new Vector3(cx, 0f, cz));
+            const float cx = -4f, cz = 158f;
+            float y0 = ground(new Vector3(cx, 0f, cz));
+            var hall = PlaceModel("Assets/_Project/Art/Models/Sketchfab/command_center_interior/SM_Hall_Interior.glb",
+                22f, new Vector3(cx, 0f, cz), ground, "ExhibitHall", false, false);
+            if (hall == null) return;
 
-            // 室内主体：Sketchfab 殖民地模块套件整景（25.3 万面，CC-BY rakshaan）
-            PlaceModel("Assets/_Project/Art/Models/Sketchfab/colony_modular_kit/scene.gltf",
-                26f, new Vector3(cx, 0f, cz), ground, "ExhibitHall", true, false);
-
-            // 室内灯光
-            (float, float)[] lightSpots = { (cx - 7f, cz - 2f), (cx + 7f, cz - 2f), (cx - 7f, cz + 3f), (cx + 7f, cz + 3f) };
-            foreach (var (lx, lz) in lightSpots)
+            // 拼装碰撞：地板/天花板/北墙/东西墙/南墙两段（中间留 3m 门洞）+ 门楣
+            var solid = new Vector3(22.5f, 4.2f, 21f);
+            void Slab(string n, Vector3 c, Vector3 s)
             {
-                var l = new GameObject("HallLight").AddComponent<Light>();
-                l.type = LightType.Point;
-                l.intensity = 1.1f;
-                l.range = 9f;
-                l.color = new Color(1f, 0.96f, 0.88f);
-                l.transform.position = new Vector3(lx, baseY + 2.8f, lz);
+                var g = new GameObject(n);
+                g.transform.SetParent(hall.transform, false);
+                var col = g.AddComponent<BoxCollider>();
+                col.center = Vector3.zero;
+                g.transform.localPosition = c;
+                col.size = s;
             }
-            Report.AppendLine("[展览舱] 殖民地套件整景（25.3 万面，CC-BY rakshaan）+ 4 点光源；可进入性待现场核验");
+            Slab("Col_Floor", new Vector3(0f, 0.05f, 0f), new Vector3(solid.x, 0.3f, solid.z));
+            Slab("Col_Ceil", new Vector3(0f, 3.95f, 0f), new Vector3(solid.x, 0.3f, solid.z));
+            Slab("Col_N", new Vector3(0f, 2.1f, solid.z * 0.5f), new Vector3(solid.x, 4.4f, 0.6f));
+            Slab("Col_E", new Vector3(solid.x * 0.5f, 2.1f, 0f), new Vector3(0.6f, 4.4f, solid.z));
+            Slab("Col_W", new Vector3(-solid.x * 0.5f, 2.1f, 0f), new Vector3(0.6f, 4.4f, solid.z));
+            Slab("Col_S_L", new Vector3(-6.5f, 2.1f, -solid.z * 0.5f), new Vector3(10f, 4.4f, 0.6f));
+            Slab("Col_S_R", new Vector3(6.5f, 2.1f, -solid.z * 0.5f), new Vector3(10f, 4.4f, 0.6f));
+            Slab("Col_S_Top", new Vector3(0f, 3.3f, -solid.z * 0.5f), new Vector3(3f, 1.9f, 0.6f));
+            Report.AppendLine("[展览舱] 指挥中心内景（99.1 万面，带门洞版）22m 落位，拼装碰撞留 3m 南门");
         }
 
         // 广寒站主体：Sketchfab CC-BY popo57 月球基地（32.4 万面）

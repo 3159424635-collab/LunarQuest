@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace LunarQuest.EditorTools
@@ -14,6 +15,47 @@ namespace LunarQuest.EditorTools
         public static void InspectMoonBase()
         {
             Inspect("Assets/_Project/Art/Models/月球基地.fbx", "moonbase");
+        }
+
+        public static void InspectInterior()
+        {
+            Inspect("Assets/_Project/Art/Models/Sketchfab/command_center_interior/scene.gltf", "interior");
+        }
+
+        // 不重建、只打开当前磁盘上的 S4 场景并渲染三张预览（现场取证用）
+        public static void RenderS4()
+        {
+            var scene = EditorSceneManager.OpenScene(
+                "Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity", OpenSceneMode.Single);
+            var rt = new RenderTexture(1280, 720, 24);
+            var camGo = new GameObject("Shot");
+            var cam = camGo.AddComponent<Camera>();
+            cam.nearClipPlane = 0.1f;
+            cam.farClipPlane = 3000f;
+            cam.fieldOfView = 55f;
+            cam.targetTexture = rt;
+            (Vector3 pos, Vector3 look, string tag)[] views =
+            {
+                (new Vector3(-4f, 55f, 120f), new Vector3(-4f, 2f, 172f), "s4now_0"),
+                (new Vector3(0f, 8f, 140f), new Vector3(-4f, 3f, 170f), "s4now_1"),
+                (new Vector3(-4f, 2.2f, 148f), new Vector3(-4f, 1.5f, 162f), "s4now_2"),
+            };
+            foreach (var v in views)
+            {
+                cam.transform.position = v.pos;
+                cam.transform.LookAt(v.look);
+                cam.Render();
+                RenderTexture.active = rt;
+                var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
+                tex.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
+                tex.Apply();
+                File.WriteAllBytes($"Logs/{v.tag}.png", tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+            }
+            cam.targetTexture = null;
+            rt.Release();
+            Object.DestroyImmediate(camGo);
+            Debug.Log("[AssetInspector] S4 现场渲染完成 Logs/s4now_*.png");
         }
 
         static void Inspect(string path, string tag)
