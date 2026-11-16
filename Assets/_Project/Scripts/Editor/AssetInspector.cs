@@ -22,6 +22,11 @@ namespace LunarQuest.EditorTools
             Inspect("Assets/_Project/Art/Models/Sketchfab/command_center_interior/scene.gltf", "interior");
         }
 
+        public static void InspectCustomBase()
+        {
+            Inspect("Assets/_Project/Art/Models/Sketchfab/SM_MoonBase_Custom.glb", "custombase");
+        }
+
         // 不重建、只打开当前磁盘上的 S4 场景并渲染三张预览（现场取证用）
         public static void RenderS4()
         {

@@ -381,12 +381,32 @@ namespace LunarQuest.EditorTools
             stand.prompt = $"按 E 查看：{title}";
         }
 
-        // 广寒站主体：Sketchfab CC-BY popo57 月球基地（32.4 万面）
+        // 广寒站主体：自建参数化基地（Blender 生成，米制原尺寸，穹顶+双舱段+走廊可进入）
         static void BuildKenneyBase(Func<Vector3, float> ground)
         {
-            PlaceModel("Assets/_Project/Art/Models/Sketchfab/lunar_base_popo57/scene.gltf",
-                55f, new Vector3(-4f, 0f, 178f), ground, "MoonBase", true, true);
-            Report.AppendLine("[基地] popo57 月球基地（32.4 万面，CC-BY）55m 落位");
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/_Project/Art/Models/Sketchfab/SM_MoonBase_Custom.glb");
+            if (prefab == null)
+            {
+                Debug.LogError("[WhiteboxBuilder] 找不到自建基地 SM_MoonBase_Custom.glb");
+                return;
+            }
+            var baseGo = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            baseGo.name = "MoonBase_Custom";
+            Bounds b = LocalBounds(baseGo.transform);
+            baseGo.transform.position = new Vector3(-4f, ground(new Vector3(-4f, 0f, 178f)) - b.min.y, 178f);
+            // 全网格碰撞：墙体/地板/门洞均为真实几何，MeshCollider 直接可用
+            int colliders = 0;
+            foreach (var mf in baseGo.GetComponentsInChildren<MeshFilter>())
+            {
+                if (mf.GetComponent<MeshCollider>() == null && mf.sharedMesh != null)
+                {
+                    var mc = mf.gameObject.AddComponent<MeshCollider>();
+                    mc.sharedMesh = mf.sharedMesh;
+                    colliders++;
+                }
+            }
+            Report.AppendLine($"[基地] 自建参数化广寒站（穹顶+双舱段+走廊，73 构件，米制）落位 (-4,178)，网格碰撞 {colliders} 处");
         }
 
         // 基地原材质同为 Built-in 管线：按零件名映射到 URP 平色材质
