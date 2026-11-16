@@ -375,8 +375,8 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             Panel($"{name}_Sill", 0f, 0.08f, 0.05f, doorW + 0.3f, 0.16f, wallT + 0.1f, dark);
 
             // 两侧延伸翼墙（封住气闸侧面与玻璃罩之间的缝隙）
-            Panel($"{name}_WingL", -(wallW / 2f + 1.0f), wallH / 2f, 0f, 2.0f, wallH, wallT, hull);
-            Panel($"{name}_WingR", (wallW / 2f + 1.0f), wallH / 2f, 0f, 2.0f, wallH, wallT, hull);
+            Panel($"{name}_WingL", -(wallW / 2f + 2.0f), wallH / 2f, 0f, 4.0f, wallH, wallT, hull);
+            Panel($"{name}_WingR", (wallW / 2f + 2.0f), wallH / 2f, 0f, 4.0f, wallH, wallT, hull);
 
             Report.AppendLine($"[门框] {name}: 门面墙 {wallW:F0}×{wallH:F0}m + 橙色门框 + 翼墙（视觉密封）");
         }
@@ -487,6 +487,34 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             var pl = Panel("PanelL", -1.8f);
             var pr = Panel("PanelR", 1.8f);
             var sd = doorRoot.AddComponent<SlidingDoor>();
+            // 东门（通往走廊A→居住舱）和北门（通往走廊B→科研舱）也装自动门
+            void DomeDoorAt(string n, Vector3 dpos, float dyaw)
+            {
+                var dr = new GameObject(n);
+                dr.transform.position = dpos;
+                dr.transform.rotation = Quaternion.Euler(0f, dyaw, 0f);
+                var dpMat = LoadOrCreateMat("M_DoorPanel", new Color(0.80f, 0.45f, 0.15f));
+                GameObject DPanel(string pn, float off)
+                {
+                    var dp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    dp.name = pn;
+                    dp.transform.SetParent(dr.transform, false);
+                    dp.transform.localPosition = new Vector3(off, 2.7f, 0f);
+                    dp.transform.localScale = new Vector3(3.6f, 5.4f, 0.3f);
+                    dp.GetComponent<Renderer>().sharedMaterial = dpMat;
+                    return dp;
+                }
+                var dpl = DPanel("L", -1.8f);
+                var dpr = DPanel("R", 1.8f);
+                var dsd = dr.AddComponent<SlidingDoor>();
+                dsd.panelL = dpl.transform;
+                dsd.panelR = dpr.transform;
+                dsd.openOffset = 3.7f;
+                dsd.autoRange = 9f;
+                dsd.prompt = "按 E 开门（靠近自动开启）";
+            }
+            DomeDoorAt("DomeDoor_E", new Vector3(11f, y0, 178f), 90f);
+            DomeDoorAt("DomeDoor_N", new Vector3(-4f, y0, 193f), 0f);
             sd.panelL = pl.transform;
             sd.panelR = pr.transform;
             sd.openOffset = 3.7f;
@@ -666,8 +694,8 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             }
             Tunnel("AirTunnel_Floor", new Vector3(4f, by + 0.05f, 134f), new Vector3(13.8f, 0.12f, 9.4f));
             Tunnel("AirTunnel_Ceil", new Vector3(4f, by + 6.1f, 134f), new Vector3(14.6f, 0.16f, 9.4f));
-            Tunnel("AirTunnel_W1", new Vector3(-2.9f, by + 3.0f, 134f), new Vector3(0.18f, 6.0f, 9.4f));
-            Tunnel("AirTunnel_W2", new Vector3(10.9f, by + 3.0f, 134f), new Vector3(0.18f, 6.0f, 9.4f));
+            Tunnel("AirTunnel_W1", new Vector3(-4.1f, by + 3.0f, 134f), new Vector3(0.18f, 6.0f, 9.4f));
+            Tunnel("AirTunnel_W2", new Vector3(12.1f, by + 3.0f, 134f), new Vector3(0.18f, 6.0f, 9.4f));
             AutoDoor("Airlock_W_Gate", new Vector3(-58f, by, 190f), 18f, 9.2f, 0.5f, 4.5f, 16f, 2.2f, 90f);
             // 西车闸密封通道（从 x=-58 到 x=-48，z 方向 18m 宽）
             Tunnel("GateW_Floor", new Vector3(-53f, by + 0.05f, 190f), new Vector3(10f, 0.14f, 18.6f));
