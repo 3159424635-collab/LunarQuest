@@ -267,62 +267,9 @@ namespace LunarQuest.EditorTools
             const float cx = -4f, cz = 158f;          // 舱中心
             float baseY = ground(new Vector3(cx, 0f, cz));
 
-            // 地板与天花板：4×3 格 4m 板
-            float[] xs = { -10f, -6f, -2f, 2f };
-            float[] zs = { cz - 4f, cz, cz + 4f };
-            foreach (float x in xs)
-                foreach (float z in zs)
-                {
-                    PlaceStation("floor-panel-straight", 4f, new Vector3(x, 0f, z), ground,
-                        $"HallFloor_{x}_{z}", true, null);
-                    var ceil = PlaceStation("floor-panel-straight", 4f, new Vector3(x, 0f, z), ground,
-                        $"HallCeil_{x}_{z}", false, new Vector3(180f, 0f, 0f));
-                    if (ceil != null) ceil.transform.position += Vector3.up * 3.2f;
-                }
-
-            // 南墙（入口）：门居中两侧墙
-            PlaceStation("wall-door", 4f, new Vector3(cx, 0f, cz - 6f), ground, "HallWall_S_Door", true, null);
-            PlaceStation("wall", 4f, new Vector3(cx - 8f, 0f, cz - 6f), ground, "HallWall_S_L", true, null);
-            PlaceStation("wall", 4f, new Vector3(cx - 4f, 0f, cz - 6f), ground, "HallWall_S_L2", true, null);
-            PlaceStation("wall", 4f, new Vector3(cx + 4f, 0f, cz - 6f), ground, "HallWall_S_R", true, null);
-            PlaceStation("wall", 4f, new Vector3(cx + 8f, 0f, cz - 6f), ground, "HallWall_S_R2", true, null);
-            // 北墙：带窗
-            PlaceStation("wall", 4f, new Vector3(cx - 8f, 0f, cz + 6f), ground, "HallWall_N1", true, null);
-            PlaceStation("wall-window", 4f, new Vector3(cx - 4f, 0f, cz + 6f), ground, "HallWall_N_Win1", true, null);
-            PlaceStation("wall", 4f, new Vector3(cx, 0f, cz + 6f), ground, "HallWall_N2", true, null);
-            PlaceStation("wall-window", 4f, new Vector3(cx + 4f, 0f, cz + 6f), ground, "HallWall_N_Win2", true, null);
-            PlaceStation("wall", 4f, new Vector3(cx + 8f, 0f, cz + 6f), ground, "HallWall_N3", true, null);
-            // 东西墙
-            for (int i = 0; i < 3; i++)
-            {
-                float z = zs[i];
-                string wn = i == 1 ? "wall-window" : "wall";
-                PlaceStation(wn, 4f, new Vector3(cx + 12f, 0f, z), ground, $"HallWall_E_{i}", true, new Vector3(0f, 90f, 0f));
-                PlaceStation(wn, 4f, new Vector3(cx - 12f, 0f, z), ground, $"HallWall_W_{i}", true, new Vector3(0f, 90f, 0f));
-            }
-
-            // 展台 ×3 + 台上微缩飞船
-            (float x, float z)[] tables = { (cx - 5f, cz - 1.5f), (cx + 5f, cz - 1.5f), (cx, cz + 3f) };
-            for (int i = 0; i < tables.Length; i++)
-            {
-                var t = PlaceStation("table-display", 1.9f, new Vector3(tables[i].x, 0f, tables[i].z),
-                    ground, $"ExhibitTable_{i}", true, new Vector3(0f, 90f * i, 0f));
-                float topY = baseY + 1.05f;
-                string ship = i == 0 ? "spaceCraft1" : i == 1 ? "spaceCraft2" : "spaceCraft5";
-                var s = PlaceKenney(ship, 1.3f, new Vector3(tables[i].x, 0f, tables[i].z),
-                    _ => topY, $"Exhibit_Item_{i}", false, new Vector3(0f, 45f * i, 0f));
-            }
-
-            // 中央展品：毅力号放在基座上
-            var pedestal = PlaceStation("container-flat", 2.2f, new Vector3(cx, 0f, cz - 2.5f),
-                ground, "Exhibit_Pedestal", true, null);
-            PlaceModel(ModelDir + "/毅力号.fbx", 2.7f, new Vector3(cx, 0f, cz - 2.5f),
-                _ => baseY + 1.05f, "Exhibit_Perseverance", false, false);
-
-            // 靠墙控制台与展示墙
-            PlaceStation("computer-wide", 2.6f, new Vector3(cx - 8f, 0f, cz + 4.5f), ground, "HallConsole_A", true, new Vector3(0f, 180f, 0f));
-            PlaceStation("computer-wide", 2.6f, new Vector3(cx + 8f, 0f, cz + 4.5f), ground, "HallConsole_B", true, new Vector3(0f, 180f, 0f));
-            PlaceStation("display-wall", 4f, new Vector3(cx - 4f, 0f, cz + 5.4f), ground, "HallDisplayWall", false, new Vector3(0f, 180f, 0f));
+            // 室内主体：Sketchfab 殖民地模块套件整景（25.3 万面，CC-BY rakshaan）
+            PlaceModel("Assets/_Project/Art/Models/Sketchfab/colony_modular_kit/scene.gltf",
+                26f, new Vector3(cx, 0f, cz), ground, "ExhibitHall", true, false);
 
             // 室内灯光
             (float, float)[] lightSpots = { (cx - 7f, cz - 2f), (cx + 7f, cz - 2f), (cx - 7f, cz + 3f), (cx + 7f, cz + 3f) };
@@ -335,17 +282,15 @@ namespace LunarQuest.EditorTools
                 l.color = new Color(1f, 0.96f, 0.88f);
                 l.transform.position = new Vector3(lx, baseY + 2.8f, lz);
             }
-            Report.AppendLine("[展览舱] 16×12m 可进入舱段：门/窗墙/天花板 + 3 展台 + 毅力号中央展品 + 控制台 + 展示墙 + 4 点光源");
+            Report.AppendLine("[展览舱] 殖民地套件整景（25.3 万面，CC-BY rakshaan）+ 4 点光源；可进入性待现场核验");
         }
 
-        // 广寒站：原月球基地 FBX（穹顶+三舱段+走廊+天线结构完整）配色修复后作为主体，
-        // 辅以 Kenney 地标塔与展览区
+        // 广寒站主体：Sketchfab CC-BY popo57 月球基地（32.4 万面）
         static void BuildKenneyBase(Func<Vector3, float> ground)
         {
-            var baseGo = PlaceModel(ModelDir + "/月球基地.fbx", 46f, new Vector3(-4f, 0f, 178f), ground, "MoonBase", true, true);
-            RecolorByPartName(baseGo);
-            PlaceKenneyHeight("station", 12f, new Vector3(-4f, 0f, 184f), ground, "Base_Landmark", false);
-            Report.AppendLine("[基地] 穹顶主基地（配色修复）+ 地标塔；展览区移入独立展览舱");
+            PlaceModel("Assets/_Project/Art/Models/Sketchfab/lunar_base_popo57/scene.gltf",
+                55f, new Vector3(-4f, 0f, 178f), ground, "MoonBase", true, true);
+            Report.AppendLine("[基地] popo57 月球基地（32.4 万面，CC-BY）55m 落位");
         }
 
         // 基地原材质同为 Built-in 管线：按零件名映射到 URP 平色材质
@@ -653,13 +598,14 @@ namespace LunarQuest.EditorTools
             go.transform.localScale = Vector3.one;
             if (stripGround)
             {
-                // 摘除内嵌的巨大地面网格（横向数百米、纵向不足 1 米的渲染器），
-                // 避免整体按最大边缩放时建筑被压扁
+                // 摘除内嵌的巨大地台/地形片（横向超大而厚度小的渲染器），避免整体按最大边缩放时建筑被压扁。
+                // 阈值放宽为横向>150m 且厚度<8m，覆盖单体大地台与拼接地形两种情况。
                 foreach (var r in go.GetComponentsInChildren<Renderer>())
                 {
-                    if (r.bounds.size.y < 1.5f && Mathf.Max(r.bounds.size.x, r.bounds.size.z) > 200f)
+                    float horiz = Mathf.Max(r.bounds.size.x, r.bounds.size.z);
+                    if (horiz > 150f && r.bounds.size.y < 8f)
                     {
-                        Report.AppendLine($"[{name}] 摘除内嵌地面网格: {r.name}");
+                        Report.AppendLine($"[{name}] 摘除内嵌地台: {r.name} ({r.bounds.size.x:F0}x{r.bounds.size.y:F0}x{r.bounds.size.z:F0})");
                         r.gameObject.SetActive(false);
                     }
                 }

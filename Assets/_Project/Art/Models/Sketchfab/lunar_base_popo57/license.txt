@@ -1,0 +1,11 @@
+Model Information:
+* title:	lunar base
+* source:	https://sketchfab.com/3d-models/lunar-base-a488c1c17eb149f5bae3121f16e24358
+* author:	popo57 (https://sketchfab.com/popo57)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "lunar base" (https://sketchfab.com/3d-models/lunar-base-a488c1c17eb149f5bae3121f16e24358) by popo57 (https://sketchfab.com/popo57) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
