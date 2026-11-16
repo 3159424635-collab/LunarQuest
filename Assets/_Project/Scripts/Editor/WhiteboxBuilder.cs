@@ -896,7 +896,7 @@ namespace LunarQuest.EditorTools
             var tcol = trig.AddComponent<BoxCollider>();
             tcol.isTrigger = true;
             tcol.size = new Vector3(56f, 16f, 56f);
-            trig.transform.position = new Vector3(80f, Ground(new Vector3(80f, 0f, 140f)) + 6f, 140f);
+            trig.transform.position = new Vector3(80f, ground(new Vector3(80f, 0f, 140f)) + 6f, 140f);
             trig.AddComponent<AreaEvent>().eventName = "enter_crater03_sampling_area";
             Report.AppendLine("[采样] 3 号坑 3 勘测点 + 进入采样区触发器（任务事件接入）");
         }
