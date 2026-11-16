@@ -335,7 +335,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             lintel.transform.SetParent(doorRoot.transform, false);
             lintel.transform.localPosition = new Vector3(0f, 5.5f, 0f);
             lintel.transform.localScale = new Vector3(7f, 1.2f, 0.4f);
-            lintel.GetComponent<Renderer>().sharedMaterial = panelMat2;
+            lintel.GetComponent<Renderer>().sharedMaterial = panelMat;
             UnityEngine.Object.DestroyImmediate(lintel.GetComponent<BoxCollider>());
 
             // 出生点→气闸的引导地灯（发光圆盘贴地，科幻导航灯风格）
