@@ -317,18 +317,26 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 p.name = n;
                 p.transform.SetParent(doorRoot.transform, false);
                 p.transform.localPosition = new Vector3(xOff, 2.6f, 0f);
-                p.transform.localScale = new Vector3(2.9f, 5.2f, 0.28f);
+                p.transform.localScale = new Vector3(3.2f, 5.4f, 0.28f);
                 p.GetComponent<Renderer>().sharedMaterial = panelMat;
                 return p;
             }
-            var pl = Panel("PanelL", -1.5f);
-            var pr = Panel("PanelR", 1.5f);
+            var pl = Panel("PanelL", -1.6f);
+            var pr = Panel("PanelR", 1.6f);
             var sd = doorRoot.AddComponent<SlidingDoor>();
             sd.panelL = pl.transform;
             sd.panelR = pr.transform;
-            sd.openOffset = 2.7f;
+            sd.openOffset = 3.3f;
             sd.autoRange = 9f;
             sd.prompt = "按 E 开门（靠近自动开启）";
+            // 门楣封住门洞上方缺口
+            var lintel = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            lintel.name = "DomeDoorLintel";
+            lintel.transform.SetParent(doorRoot.transform, false);
+            lintel.transform.localPosition = new Vector3(0f, 5.5f, 0f);
+            lintel.transform.localScale = new Vector3(7f, 1.2f, 0.4f);
+            lintel.GetComponent<Renderer>().sharedMaterial = panelMat2;
+            UnityEngine.Object.DestroyImmediate(lintel.GetComponent<BoxCollider>());
 
             // 出生点→气闸的引导地灯（发光圆盘贴地，科幻导航灯风格）
             var lightMat = LoadOrCreateMat("M_PathLight", new Color(0.45f, 0.9f, 1f));
@@ -475,10 +483,15 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 t.GetComponent<Renderer>().sharedMaterial = tunnelMat;
             }
             Tunnel("AirTunnel_Floor", new Vector3(4f, by + 0.05f, 134f), new Vector3(13.8f, 0.12f, 9.4f));
-            Tunnel("AirTunnel_Ceil", new Vector3(4f, by + 5.35f, 134f), new Vector3(13.8f, 0.14f, 9.4f));
-            Tunnel("AirTunnel_W1", new Vector3(-2.9f, by + 2.7f, 134f), new Vector3(0.18f, 5.4f, 9.4f));
-            Tunnel("AirTunnel_W2", new Vector3(10.9f, by + 2.7f, 134f), new Vector3(0.18f, 5.4f, 9.4f));
+            Tunnel("AirTunnel_Ceil", new Vector3(4f, by + 6.1f, 134f), new Vector3(14.6f, 0.16f, 9.4f));
+            Tunnel("AirTunnel_W1", new Vector3(-2.9f, by + 3.0f, 134f), new Vector3(0.18f, 6.0f, 9.4f));
+            Tunnel("AirTunnel_W2", new Vector3(10.9f, by + 3.0f, 134f), new Vector3(0.18f, 6.0f, 9.4f));
             AutoDoor("Airlock_W_Gate", new Vector3(-58f, by, 190f), 18f, 9.2f, 0.5f, 4.5f, 16f, 2.2f, 90f);
+            // 西车闸密封通道（从 x=-58 到 x=-48，z 方向 18m 宽）
+            Tunnel("GateW_Floor", new Vector3(-53f, by + 0.05f, 190f), new Vector3(10f, 0.14f, 18.6f));
+            Tunnel("GateW_Ceil", new Vector3(-53f, by + 9.4f, 190f), new Vector3(10f, 0.16f, 18.6f));
+            Tunnel("GateW_N", new Vector3(-53f, by + 4.7f, 199.3f), new Vector3(10f, 9.4f, 0.18f));
+            Tunnel("GateW_S", new Vector3(-53f, by + 4.7f, 180.7f), new Vector3(10f, 9.4f, 0.18f));
             Report.AppendLine("[基地] 玻璃半球防护罩；南人气闸双道门(x=+4实测对位)+西车闸大门（glTF X轴实测镜像已补偿）");
         }
 

@@ -27,6 +27,83 @@ namespace LunarQuest.EditorTools
             Inspect("Assets/_Project/Art/Models/Sketchfab/SM_MoonBase_Custom.glb", "custombase");
         }
 
+        // 全面排查建筑漏缝：外围四角度 + 所有关键连接点
+        public static void AuditBuilding()
+        {
+            var scene = EditorSceneManager.OpenScene(
+                "Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity", OpenSceneMode.Single);
+
+            var rt = new RenderTexture(1280, 720, 24);
+            var camGo = new GameObject("Audit");
+            var cam = camGo.AddComponent<Camera>();
+            cam.nearClipPlane = 0.05f;
+            cam.farClipPlane = 3000f;
+            cam.fieldOfView = 70f;
+            cam.targetTexture = rt;
+
+            // 基地中心大约在 (0, 2, 185)，玻璃罩半径 ~52
+            (Vector3 pos, Vector3 look, string tag)[] views =
+            {
+                // 外围四角度（看整体）
+                (new Vector3(70f, 15f, 120f), new Vector3(0f, 5f, 185f), "audit_S_out"),
+                (new Vector3(-80f, 15f, 120f), new Vector3(0f, 5f, 185f), "audit_SW_out"),
+                (new Vector3(-80f, 15f, 260f), new Vector3(0f, 5f, 185f), "audit_NW_out"),
+                (new Vector3(70f, 15f, 260f), new Vector3(0f, 5f, 185f), "audit_NE_out"),
+                // 南气闸近距离（看密封）
+                (new Vector3(4f, 2f, 124f), new Vector3(4f, 2.5f, 135f), "audit_airS_far"),
+                (new Vector3(4f, 2.2f, 131f), new Vector3(4f, 2.5f, 138f), "audit_airS_tunnel"),
+                (new Vector3(4f, 2.2f, 136f), new Vector3(4f, 2.5f, 145f), "audit_airS_inner"),
+                (new Vector3(8f, 2.5f, 134f), new Vector3(0f, 2.5f, 134f), "audit_airS_wall"),
+                // 西车闸近距离
+                (new Vector3(-70f, 3f, 190f), new Vector3(-55f, 3f, 190f), "audit_gateW_far"),
+                (new Vector3(-62f, 2.5f, 190f), new Vector3(-50f, 2.5f, 190f), "audit_gateW_tunnel"),
+                // 穹顶门
+                (new Vector3(-4f, 2.5f, 158f), new Vector3(-4f, 3f, 168f), "audit_domeDoor"),
+                // 穹顶内部各方向（看墙有没有洞）
+                (new Vector3(-4f, 2.5f, 170f), new Vector3(-4f, 4f, 185f), "audit_dome_in_N"),
+                (new Vector3(-4f, 2.5f, 185f), new Vector3(-20f, 4f, 185f), "audit_dome_in_W"),
+                (new Vector3(-4f, 2.5f, 185f), new Vector3(10f, 4f, 185f), "audit_dome_in_E"),
+                // 走廊连接处
+                (new Vector3(-10f, 2.5f, 178f), new Vector3(-16f, 2.5f, 178f), "audit_corA"),
+                (new Vector3(-4f, 2.5f, 190f), new Vector3(-4f, 2.5f, 198f), "audit_corB"),
+            };
+            foreach (var v in views)
+            {
+                cam.transform.position = v.pos;
+                cam.transform.LookAt(v.look);
+                cam.Render();
+                RenderTexture.active = rt;
+                var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
+                tex.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
+                tex.Apply();
+                File.WriteAllBytes($"Logs/{v.tag}.png", tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+            }
+            cam.targetTexture = null;
+            rt.Release();
+            Object.DestroyImmediate(camGo);
+
+            // 数据审计：打印所有独立 Unity 侧建筑件的坐标和尺寸
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("=== 独立建筑组件坐标 ===");
+            foreach (var go in scene.GetRootGameObjects())
+            {
+                if (go.name.StartsWith("Airlock") || go.name.StartsWith("AirTunnel") ||
+                    go.name.StartsWith("DomeDoor") || go.name.StartsWith("PathLight"))
+                {
+                    sb.AppendLine($"{go.name}: pos={go.transform.position}");
+                    foreach (Transform child in go.transform)
+                    {
+                        var col = child.GetComponent<Collider>();
+                        if (col is BoxCollider bc)
+                            sb.AppendLine($"  {child.name}: center={bc.center} size={bc.size} world={child.position}");
+                    }
+                }
+            }
+            File.WriteAllText("Logs/audit_positions.txt", sb.ToString());
+            Debug.Log($"[AuditBuilding] {views.Length} 张截图 + 坐标报告完成");
+        }
+
         // 沿南气闸进入路径逐帧取证：出生点→外门→前室→内门→罩内
         public static void RenderEntry()
         {
