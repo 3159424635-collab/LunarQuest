@@ -27,8 +27,8 @@ namespace LunarQuest.EditorTools
         const float CraterBR = 25f, CraterBD = 5f;
         static readonly Vector2 CraterC = new Vector2(-40f, -170f);
         const float CraterCR = 40f, CraterCD = 6f;
-        static readonly Vector2 BaseFlat = new Vector2(0f, 170f);      // 广寒站平整区
-        const float BaseFlatR = 62f;
+        static readonly Vector2 BaseFlat = new Vector2(-8f, 188f);     // 广寒站平整区（罩×2 后对位）
+        const float BaseFlatR = 80f;
         static readonly Vector2 LandingFlat = new Vector2(120f, -40f); // 着陆区
         const float LandingFlatR = 28f;
 
@@ -167,13 +167,13 @@ namespace LunarQuest.EditorTools
             Terrain terrain = BuildTerrain();
             float Ground(Vector3 p) => terrain.SampleHeight(p) + terrain.transform.position.y;
 
-            var player = BuildPlayer(new Vector3(0f, 0f, 150f), Ground);
+            var player = BuildPlayer(new Vector3(0f, 0f, 112f), Ground);
             BuildRover(new Vector3(10f, 0f, 168f), Ground, player.transform);
             BuildKenneyBase(Ground);
             BuildExhibitHall(Ground);
-            PlaceNpc("base_coordinator", "周航_协调员", new Vector3(2f, 0f, 171f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
-            PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(-9f, 0f, 162f), Ground, "样本先放我这里，参观完科普厅再走。");
-            PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(14f, 0f, 166f), Ground, "车就在外面，月面路滑，慢点开。");
+            PlaceNpc("base_coordinator", "周航_协调员", new Vector3(8f, 0f, 164f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
+            PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(4f, 0f, 181f), Ground, "样本先放我这里，参观完科普厅再走。");
+            PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(14f, 0f, 172f), Ground, "车就在外面，月面路滑，慢点开。");
             BuildSampleRocks(Ground);
             BuildRockField(Ground);
             BuildMinimap(player.transform);
@@ -290,33 +290,34 @@ namespace LunarQuest.EditorTools
             // 滑动门：穹顶南门洞（z = cz-7.5）
             var panelMat = LoadOrCreateMat("M_DoorPanel", new Color(0.80f, 0.45f, 0.15f));
             var doorRoot = new GameObject("DomeDoor");
-            doorRoot.transform.position = new Vector3(cx, y0, cz - 7.35f);
+            doorRoot.transform.position = new Vector3(cx, y0, cz - 14.7f);
             GameObject Panel(string n, float xOff)
             {
                 var p = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 p.name = n;
                 p.transform.SetParent(doorRoot.transform, false);
-                p.transform.localPosition = new Vector3(xOff, 1.3f, 0f);
-                p.transform.localScale = new Vector3(1.45f, 2.6f, 0.14f);
+                p.transform.localPosition = new Vector3(xOff, 2.6f, 0f);
+                p.transform.localScale = new Vector3(2.9f, 5.2f, 0.28f);
                 p.GetComponent<Renderer>().sharedMaterial = panelMat;
                 return p;
             }
-            var pl = Panel("PanelL", -0.75f);
-            var pr = Panel("PanelR", 0.75f);
+            var pl = Panel("PanelL", -1.5f);
+            var pr = Panel("PanelR", 1.5f);
             var sd = doorRoot.AddComponent<SlidingDoor>();
             sd.panelL = pl.transform;
             sd.panelR = pr.transform;
-            sd.autoRange = 4.5f;
+            sd.openOffset = 2.7f;
+            sd.autoRange = 9f;
             sd.prompt = "按 E 开门（靠近自动开启）";
 
             // 出生点→穹顶门的引导路标（橙色短柱）
             var postMat = LoadOrCreateMat("M_TrimOrange", new Color(0.85f, 0.45f, 0.16f));
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 6; i++)
             {
                 var post = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 post.name = $"PathPost_{i}";
-                float px = Mathf.Lerp(0f, -4f, i / 4f);
-                float pz = 152f + i * 4.2f;
+                float px = Mathf.Lerp(0f, -12f, i / 5f);
+                float pz = 114f + i * 4.5f;
                 post.transform.localScale = new Vector3(0.25f, 1.1f, 0.25f);
                 post.transform.position = new Vector3(px + 1.6f, ground(new Vector3(px, 0f, pz)) + 0.55f, pz);
                 post.GetComponent<Renderer>().sharedMaterial = postMat;
@@ -324,21 +325,21 @@ namespace LunarQuest.EditorTools
 
 
             // 展台 ×3 环绕全息台（避开南门/西走廊/北走廊三个方向）
-            PlaceStand(0, new Vector3(-1f, 0f, 181.5f), y0,
+            PlaceStand(0, new Vector3(2f, 0f, 185f), y0,
                 "阿波罗月球车（LRV）",
                 "1971–1972 年阿波罗 15/16/17 号任务使用，电池驱动四轮月面车，" +
                 "月面最高时速约 18 公里，三台车累计行驶约 90 公里。",
-                ModelDir + "/SM_Rover_Apollo.glb", 1.7f);
-            PlaceStand(1, new Vector3(-1f, 0f, 174.8f), y0,
+                ModelDir + "/SM_Rover_Apollo.glb", 3.4f);
+            PlaceStand(1, new Vector3(2f, 0f, 171.6f), y0,
                 "玉兔二号月球车（占位模型）",
                 "嫦娥四号任务 2019 年实现人类首次月球背面软着陆巡视，" +
                 "玉兔二号设计寿命 3 个月，实际工作超过 5 年。",
-                KenneyDir + "/spaceCraft1.fbx", 1.3f);
-            PlaceStand(2, new Vector3(-8.4f, 0f, 180.2f), y0,
+                KenneyDir + "/spaceCraft1.fbx", 2.6f);
+            PlaceStand(2, new Vector3(-12.8f, 0f, 182.4f), y0,
                 "嫦娥五号返回舱（占位模型）",
                 "2020 年嫦娥五号完成我国首次地外天体采样返回，" +
                 "带回月壤样品 1731 克，本作 HUD 数据卡同款数字。",
-                KenneyDir + "/spaceCraft5.fbx", 1.3f);
+                KenneyDir + "/spaceCraft5.fbx", 2.6f);
 
             Report.AppendLine("[展览区] 并入穹顶大厅：南门滑动门 + 展台×3 环绕全息台；绿色指挥室内景已拆除");
         }
@@ -346,7 +347,7 @@ namespace LunarQuest.EditorTools
         static void PlaceStand(int i, Vector3 pos, float baseY, string title, string desc,
             string miniPath, float miniSize)
         {
-            var ped = PlaceStation("table-display", 1.8f, pos, _ => baseY, $"ExhibitStand_{i}", true, null);
+            var ped = PlaceStation("table-display", 3.6f, pos, _ => baseY, $"ExhibitStand_{i}", true, null);
             if (ped == null) return;
             Bounds pb = LocalBounds(ped.transform);
             float topY = pb.max.y + 0.05f;
@@ -356,8 +357,8 @@ namespace LunarQuest.EditorTools
             var screenMat = LoadOrCreateMat("M_QRScreen", new Color(0.92f, 0.92f, 0.88f));
             var screen = GameObject.CreatePrimitive(PrimitiveType.Cube);
             screen.name = $"QRScreen_{i}";
-            screen.transform.position = new Vector3(pos.x, baseY + 1.6f, pos.z - 0.6f);
-            screen.transform.localScale = new Vector3(0.7f, 0.55f, 0.06f);
+            screen.transform.position = new Vector3(pos.x, baseY + 3.2f, pos.z - 1.2f);
+            screen.transform.localScale = new Vector3(1.4f, 1.1f, 0.12f);
             screen.GetComponent<Renderer>().sharedMaterial = screenMat;
             UnityEngine.Object.DestroyImmediate(screen.GetComponent<BoxCollider>());
 
@@ -379,6 +380,7 @@ namespace LunarQuest.EditorTools
             }
             var baseGo = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             baseGo.name = "MoonBase_Custom";
+            baseGo.transform.localScale = Vector3.one * 2f;   // 整体放大两倍
             Bounds b = LocalBounds(baseGo.transform);
             baseGo.transform.position = new Vector3(-4f, ground(new Vector3(-4f, 0f, 178f)) - b.min.y, 178f);
             // 全网格碰撞：墙体/地板/门洞均为真实几何，MeshCollider 直接可用
@@ -392,7 +394,7 @@ namespace LunarQuest.EditorTools
                     colliders++;
                 }
             }
-            Report.AppendLine($"[基地] 自建参数化广寒站（穹顶+双舱段+走廊，73 构件，米制）落位 (-4,178)，网格碰撞 {colliders} 处");
+            Report.AppendLine($"[基地] 自建参数化广寒站 ×2 放大（玻璃罩 r52/穹顶 r15/舱段 26m），网格碰撞 {colliders} 处");
 
             // 穹顶内景：成品科幻家具（控制台/椅子）+ 内部光源
             float by = ground(new Vector3(-4f, 0f, 178f));
@@ -403,16 +405,16 @@ namespace LunarQuest.EditorTools
             PlaceStation("chair", 1.0f, new Vector3(3.4f, 0f, 171.8f), ground, "DomeChair_2", false, new Vector3(0f, 135f, 0f));
             var domeLight = new GameObject("DomeInteriorLight").AddComponent<Light>();
             domeLight.type = LightType.Point;
-            domeLight.intensity = 2.6f;
-            domeLight.range = 18f;
+            domeLight.intensity = 4.0f;
+            domeLight.range = 30f;
             domeLight.color = new Color(1f, 0.98f, 0.92f);
-            domeLight.transform.position = new Vector3(-4f, by + 4.9f, 178f);
+            domeLight.transform.position = new Vector3(-4f, by + 9.8f, 178f);
             var domeLight2 = new GameObject("DomeInteriorLight2").AddComponent<Light>();
             domeLight2.type = LightType.Point;
-            domeLight2.intensity = 1.4f;
-            domeLight2.range = 12f;
+            domeLight2.intensity = 2.2f;
+            domeLight2.range = 24f;
             domeLight2.color = new Color(0.95f, 0.97f, 1f);
-            domeLight2.transform.position = new Vector3(-4f, by + 2.2f, 178f);
+            domeLight2.transform.position = new Vector3(-4f, by + 4.4f, 178f);
 
             // 气闸门（玻璃罩半球防护体系：人行南闸双道门 + 车行东闸大门，均自动感应）
             var panelMat2 = LoadOrCreateMat("M_DoorPanel", new Color(0.80f, 0.45f, 0.15f));
@@ -438,9 +440,9 @@ namespace LunarQuest.EditorTools
                 d.autoRange = range;
                 d.prompt = "气闸门（靠近自动开启）";
             }
-            AutoDoor("Airlock_S_Outer", new Vector3(-8f, by, 153.65f), 3.2f, 2.7f, 0.12f, 0.8f, 5f, 2.5f);
-            AutoDoor("Airlock_S_Inner", new Vector3(-8f, by, 158.35f), 3.2f, 2.7f, 0.12f, 0.8f, 5f, 2.5f);
-            AutoDoor("Airlock_E_Gate", new Vector3(22.9f, by, 184f), 5.6f, 4.6f, 0.25f, 1.4f, 9f, 1.6f);
+            AutoDoor("Airlock_S_Outer", new Vector3(-12f, by, 129.3f), 6.4f, 5.4f, 0.24f, 1.6f, 10f, 3f);
+            AutoDoor("Airlock_S_Inner", new Vector3(-12f, by, 138.7f), 6.4f, 5.4f, 0.24f, 1.6f, 10f, 3f);
+            AutoDoor("Airlock_E_Gate", new Vector3(50f, by, 190f), 11.2f, 9.2f, 0.5f, 2.8f, 14f, 2.2f);
             Report.AppendLine("[基地] 玻璃半球防护罩+结构网格+压力环；南人气闸双道门+东车闸大门（均自动）");
         }
 
@@ -940,12 +942,12 @@ namespace LunarQuest.EditorTools
         {
             RenderPreviewsAt("scene", new[]
             {
-                (new Vector3(-4f, 55f, 120f), new Vector3(-4f, 2f, 172f)),       // 基地鸟瞰
-                (new Vector3(0f, 8f, 140f), new Vector3(-4f, 3f, 170f)),         // 出生点望向基地
-                (new Vector3(-4f, 2.2f, 148f), new Vector3(-4f, 1.5f, 162f)),    // 展览舱门口
-                (new Vector3(-4f, 3.4f, 173.5f), new Vector3(-4f, 2.4f, 179.5f)),// 穹顶内部
-                (new Vector3(-4f, 2.6f, 168.5f), new Vector3(-4f, 2.4f, 176f)),  // 穿南门看大厅
-                (new Vector3(-8f, 5f, 147f), new Vector3(-8f, 2.6f, 159f)),      // 南气闸外观
+                (new Vector3(-12f, 110f, 80f), new Vector3(-8f, 2f, 185f)),     // 基地鸟瞰
+                (new Vector3(0f, 8f, 102f), new Vector3(-8f, 3f, 170f)),         // 出生点望向基地
+                (new Vector3(-4f, 2.6f, 160f), new Vector3(-4f, 2f, 172f)),      // 穹顶门外
+                (new Vector3(-4f, 3.4f, 167f), new Vector3(-4f, 2.4f, 180f)),    // 穹顶内部
+                (new Vector3(-12f, 6f, 118f), new Vector3(-12f, 2.6f, 136f)),    // 南气闸外观
+                (new Vector3(56f, 8f, 190f), new Vector3(46f, 4f, 190f)),        // 东车闸外观
             });
         }
 
