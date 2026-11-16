@@ -347,7 +347,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
 
             // 门面墙：比门洞大一大圈，完全覆盖门洞周围的缝隙
             float wallW = doorW + 3.0f;   // 两侧各多 1.5m
-            float wallH = doorH + 1.5f;   // 上方多 1.5m
+            float wallH = doorH + 3.5f;   // 上方多 3.5m（封住顶部所有缝隙）
             float wallT = 0.4f;           // 墙厚
 
             void Panel(string n, float lx, float ly, float lz, float sx, float sy, float sz, Material m)
@@ -515,6 +515,27 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             }
             DomeDoorAt("DomeDoor_E", new Vector3(11f, y0, 178f), 90f);
             DomeDoorAt("DomeDoor_N", new Vector3(-4f, y0, 193f), 0f);
+            var trimMat = LoadOrCreateMat("M_DoorFrame", new Color(0.16f, 0.18f, 0.22f));
+            void DoorTrim(string tn, Vector3 tpos, float tyaw)
+            {
+                var tr = new GameObject(tn + "_Trim");
+                tr.transform.position = tpos;
+                tr.transform.rotation = Quaternion.Euler(0f, tyaw, 0f);
+                void TP(string pn, float lx, float ly, float sx, float sy)
+                {
+                    var tp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    tp.name = pn;
+                    tp.transform.SetParent(tr.transform, false);
+                    tp.transform.localPosition = new Vector3(lx, ly, 0.12f);
+                    tp.transform.localScale = new Vector3(sx, sy, 0.5f);
+                    tp.GetComponent<Renderer>().sharedMaterial = trimMat;
+                }
+                TP(tn + "_JambL", -3.8f, 3.0f, 0.45f, 6.0f);
+                TP(tn + "_JambR", 3.8f, 3.0f, 0.45f, 6.0f);
+                TP(tn + "_Lintel", 0f, 5.9f, 8.2f, 1.0f);
+            }
+            DoorTrim("DomeDoor_E", new Vector3(11f, y0, 178f), 90f);
+            DoorTrim("DomeDoor_N", new Vector3(-4f, y0, 193f), 0f);
             sd.panelL = pl.transform;
             sd.panelR = pr.transform;
             sd.openOffset = 3.7f;
