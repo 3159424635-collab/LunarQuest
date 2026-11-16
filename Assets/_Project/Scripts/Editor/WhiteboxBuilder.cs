@@ -100,6 +100,11 @@ namespace LunarQuest.EditorTools
             PlaceNpc("ground_flight_controller", "林岚_飞控", new Vector3(31f, 0f, -11f), Flat,
                 "欢迎加入任务。跟我来，先熟悉操作，再去看发射。");
             var player = BuildPlayer(new Vector3(35f, 0f, -7f), Flat);
+            new GameObject("InteractionPromptUI").AddComponent<InteractionPromptUI>();
+            var qm1 = new GameObject("QuestManager").AddComponent<QuestManager>();
+            qm1.database = AssetDatabase.LoadAssetAtPath<TextAsset>(
+                "Assets/_Project/Content/Characters/dialogue.json");
+            qm1.startEvent = "launch_tutorial_start";
             player.GetComponent<HUDController>().SetQuest("走近飞控林岚按 E 交谈，完成发射前检查");
 
             const string scenePath = "Assets/_Project/Scenes/S1_LaunchSite.unity";
@@ -178,6 +183,7 @@ namespace LunarQuest.EditorTools
             BuildRockField(Ground);
             BuildMinimap(player.transform);
 
+            new GameObject("InteractionPromptUI").AddComponent<InteractionPromptUI>();
             var qmGo = new GameObject("QuestManager");
             var qm = qmGo.AddComponent<QuestManager>();
             qm.database = AssetDatabase.LoadAssetAtPath<TextAsset>(
@@ -689,7 +695,7 @@ namespace LunarQuest.EditorTools
 
             var door = rover.AddComponent<VehicleDoor>();
             door.vehicle = enterExit;
-            door.prompt = "按 F 或 E 上下车";
+            door.prompt = "按 E 上下车";
 
             PrefabUtility.SaveAsPrefabAsset(rover, "Assets/_Project/Prefabs/PF_Rover.prefab");
         }

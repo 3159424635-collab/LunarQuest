@@ -298,5 +298,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e612b33a7338d194eb06d59332b733db, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  prompt: "\u6309 F \u6216 E \u4E0A\u4E0B\u8F66"
+  prompt: "\u6309 E \u4E0A\u4E0B\u8F66"
   vehicle: {fileID: 2375380777904738423}

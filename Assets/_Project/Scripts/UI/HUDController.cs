@@ -59,7 +59,6 @@ namespace LunarQuest
             if (!showDebugHud) return;
             GUILayout.BeginArea(new Rect(16f, 16f, 340f, 160f));
             GUILayout.Label("速度: " + (rover ? rover.SpeedKmh.ToString("0") : "--") + " km/h");
-            GUILayout.Label("提示: " + (string.IsNullOrEmpty(prompt) ? "-" : prompt));
             if (!string.IsNullOrEmpty(quest)) GUILayout.Label("任务: " + quest);
             GUILayout.EndArea();
         }
