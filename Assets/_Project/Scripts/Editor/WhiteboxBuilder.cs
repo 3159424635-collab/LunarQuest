@@ -529,17 +529,17 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
 
 
             // 展台 ×3 环绕全息台（避开南门/西走廊/北走廊三个方向）
-            PlaceStand(0, new Vector3(-0.5f, 0f, 182f), y0,
+            PlaceStand(0, new Vector3(1.3f, 0f, 183.3f), y0,
                 "阿波罗月球车（LRV）",
                 "1971–1972 年阿波罗 15/16/17 号任务使用，电池驱动四轮月面车，" +
                 "月面最高时速约 18 公里，三台车累计行驶约 90 公里。",
                 ModelDir + "/SM_Rover_Apollo.glb", 3.4f);
-            PlaceStand(1, new Vector3(-0.5f, 0f, 174.5f), y0,
+            PlaceStand(1, new Vector3(1.3f, 0f, 172.7f), y0,
                 "玉兔二号月球车（占位模型）",
                 "嫦娥四号任务 2019 年实现人类首次月球背面软着陆巡视，" +
                 "玉兔二号设计寿命 3 个月，实际工作超过 5 年。",
                 KenneyDir + "/spaceCraft1.fbx", 2.6f);
-            PlaceStand(2, new Vector3(-8f, 0f, 182f), y0,
+            PlaceStand(2, new Vector3(-9.3f, 0f, 183.3f), y0,
                 "嫦娥五号返回舱（占位模型）",
                 "2020 年嫦娥五号完成我国首次地外天体采样返回，" +
                 "带回月壤样品 1731 克，本作 HUD 数据卡同款数字。",
