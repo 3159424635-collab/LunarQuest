@@ -162,6 +162,8 @@ namespace LunarQuest.EditorTools
 
             BuildLighting();
             BuildSkybox();
+            // 月面物理：全局重力设为 1/6（月球车与掉落物一致，同时大幅降低摩擦拖滞）
+            Physics.gravity = new Vector3(0f, -9.81f / 6f, 0f);
             Terrain terrain = BuildTerrain();
             float Ground(Vector3 p) => terrain.SampleHeight(p) + terrain.transform.position.y;
 
@@ -176,7 +178,7 @@ namespace LunarQuest.EditorTools
             BuildRockField(Ground);
             BuildMinimap(player.transform);
 
-            player.GetComponent<HUDController>().SetQuest("E 交谈/采样 · F 上下月球车 · V 切换视角");
+            player.GetComponent<HUDController>().SetQuest("E 开门/交谈/查看展品 · F 上下月球车 · V 切换视角");
 
             const string scenePath = "Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity";
             EditorSceneManager.SaveScene(scene, scenePath);
@@ -261,8 +263,25 @@ namespace LunarQuest.EditorTools
             return PlaceModel($"{StationDir}/{model}.fbx", targetMax, pos, ground, name, addCollider, false, rotEuler);
         }
 
+        // 低摩擦物理材质：月球车 BoxCollider 在地形上滑行而非蹭地卡死
+        static PhysicMaterial LoadOrCreatePhysicMaterial()
+        {
+            const string path = "Assets/_Project/Art/Materials/PM_Slip.physicMaterial";
+            var pm = AssetDatabase.LoadAssetAtPath<PhysicMaterial>(path);
+            if (pm != null) return pm;
+            pm = new PhysicMaterial("PM_Slip")
+            {
+                dynamicFriction = 0.05f,
+                staticFriction = 0.05f,
+                frictionCombine = PhysicMaterialCombine.Minimum,
+                bounciness = 0f,
+            };
+            AssetDatabase.CreateAsset(pm, path);
+            return pm;
+        }
+
         // 展览舱：指挥中心内景（99.1 万面，CC-BY）经 Blender 切出南门洞的版本。
-        // 碰撞不用整体包围盒，改为留门缝的拼装式围合。
+        // 碰撞/门/展台均为世界坐标独立物体（舱体根节点带缩放，子级会被放大，不可挂）。
         static void BuildExhibitHall(Func<Vector3, float> ground)
         {
             const float cx = -4f, cz = 158f;
@@ -271,15 +290,13 @@ namespace LunarQuest.EditorTools
                 22f, new Vector3(cx, 0f, cz), ground, "ExhibitHall", false, false);
             if (hall == null) return;
 
-            // 拼装碰撞：地板/天花板/北墙/东西墙/南墙两段（中间留 3m 门洞）+ 门楣
             var solid = new Vector3(22.5f, 4.2f, 21f);
             void Slab(string n, Vector3 c, Vector3 s)
             {
                 var g = new GameObject(n);
-                g.transform.SetParent(hall.transform, false);
+                g.transform.SetParent(hall.transform.parent == null ? null : hall.transform.parent, false);
+                g.transform.position = new Vector3(cx, y0, cz) + c;
                 var col = g.AddComponent<BoxCollider>();
-                col.center = Vector3.zero;
-                g.transform.localPosition = c;
                 col.size = s;
             }
             Slab("Col_Floor", new Vector3(0f, 0.05f, 0f), new Vector3(solid.x, 0.3f, solid.z));
@@ -290,7 +307,78 @@ namespace LunarQuest.EditorTools
             Slab("Col_S_L", new Vector3(-6.5f, 2.1f, -solid.z * 0.5f), new Vector3(10f, 4.4f, 0.6f));
             Slab("Col_S_R", new Vector3(6.5f, 2.1f, -solid.z * 0.5f), new Vector3(10f, 4.4f, 0.6f));
             Slab("Col_S_Top", new Vector3(0f, 3.3f, -solid.z * 0.5f), new Vector3(3f, 1.9f, 0.6f));
-            Report.AppendLine("[展览舱] 指挥中心内景（99.1 万面，带门洞版）22m 落位，拼装碰撞留 3m 南门");
+
+            // 滑动门（E 开关）：双扇 + 门楣
+            var panelMat = LoadOrCreateMat("M_DoorPanel", new Color(0.80f, 0.45f, 0.15f));
+            var frameMat = LoadOrCreateMat("M_DoorFrame", new Color(0.16f, 0.18f, 0.22f));
+            var doorRoot = new GameObject("HallDoor");
+            doorRoot.transform.position = new Vector3(cx, y0, cz - solid.z * 0.5f + 0.12f);
+            GameObject Panel(string n, float xOff)
+            {
+                var p = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                p.name = n;
+                p.transform.SetParent(doorRoot.transform, false);
+                p.transform.localPosition = new Vector3(xOff, 1.15f, 0f);
+                p.transform.localScale = new Vector3(1.45f, 2.3f, 0.14f);
+                p.GetComponent<Renderer>().sharedMaterial = panelMat;
+                return p;
+            }
+            var pl = Panel("PanelL", -0.75f);
+            var pr = Panel("PanelR", 0.75f);
+            var header = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            header.name = "Header";
+            header.transform.SetParent(doorRoot.transform, false);
+            header.transform.localPosition = new Vector3(0f, 2.5f, 0f);
+            header.transform.localScale = new Vector3(3.2f, 0.35f, 0.22f);
+            header.GetComponent<Renderer>().sharedMaterial = frameMat;
+            UnityEngine.Object.DestroyImmediate(header.GetComponent<BoxCollider>());
+            var sd = doorRoot.AddComponent<SlidingDoor>();
+            sd.panelL = pl.transform;
+            sd.panelR = pr.transform;
+            sd.prompt = "按 E 开门";
+
+            // 展台 ×3：台座 + 微缩展品 + 二维码屏占位 + 数据卡交互
+            PlaceStand(0, new Vector3(-11f, 0f, 152.5f), y0,
+                "阿波罗月球车（LRV）",
+                "1971–1972 年阿波罗 15/16/17 号任务使用，电池驱动四轮月面车，" +
+                "月面最高时速约 18 公里，三台车累计行驶约 90 公里。",
+                ModelDir + "/SM_Rover_Apollo.glb", 1.7f);
+            PlaceStand(1, new Vector3(-4f, 0f, 153.5f), y0,
+                "玉兔二号月球车（占位模型）",
+                "嫦娥四号任务 2019 年实现人类首次月球背面软着陆巡视，" +
+                "玉兔二号设计寿命 3 个月，实际工作超过 5 年。",
+                KenneyDir + "/spaceCraft1.fbx", 1.3f);
+            PlaceStand(2, new Vector3(3f, 0f, 152.5f), y0,
+                "嫦娥五号返回舱（占位模型）",
+                "2020 年嫦娥五号完成我国首次地外天体采样返回，" +
+                "带回月壤样品 1731 克，本作 HUD 数据卡同款数字。",
+                KenneyDir + "/spaceCraft5.fbx", 1.3f);
+
+            Report.AppendLine("[展览舱] 指挥中心内景+滑动门(E)+3 展台(E 数据卡/二维码屏占位)；碰撞为世界坐标拼装");
+        }
+
+        static void PlaceStand(int i, Vector3 pos, float baseY, string title, string desc,
+            string miniPath, float miniSize)
+        {
+            var ped = PlaceStation("table-display", 1.8f, pos, _ => baseY, $"ExhibitStand_{i}", true, null);
+            if (ped == null) return;
+            Bounds pb = LocalBounds(ped.transform);
+            float topY = pb.max.y + 0.05f;
+            if (!string.IsNullOrEmpty(miniPath))
+                PlaceModel(miniPath, miniSize, pos, _ => topY, $"ExhibitMini_{i}", false, false);
+
+            var screenMat = LoadOrCreateMat("M_QRScreen", new Color(0.92f, 0.92f, 0.88f));
+            var screen = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            screen.name = $"QRScreen_{i}";
+            screen.transform.position = new Vector3(pos.x, baseY + 1.6f, pos.z - 0.6f);
+            screen.transform.localScale = new Vector3(0.7f, 0.55f, 0.06f);
+            screen.GetComponent<Renderer>().sharedMaterial = screenMat;
+            UnityEngine.Object.DestroyImmediate(screen.GetComponent<BoxCollider>());
+
+            var stand = ped.AddComponent<ExhibitStand>();
+            stand.exhibitTitle = title;
+            stand.exhibitDesc = desc;
+            stand.prompt = $"按 E 查看：{title}";
         }
 
         // 广寒站主体：Sketchfab CC-BY popo57 月球基地（32.4 万面）
@@ -517,6 +605,7 @@ namespace LunarQuest.EditorTools
             var box = rover.AddComponent<BoxCollider>();
             box.center = new Vector3(b1.center.x / scale, b1.center.y / scale, b1.center.z / scale);
             box.size = new Vector3(b1.size.x / scale, b1.size.y / scale, b1.size.z / scale);
+            box.sharedMaterial = LoadOrCreatePhysicMaterial();
             var rb = rover.AddComponent<Rigidbody>();
             rb.mass = 800f;
             rb.interpolation = RigidbodyInterpolation.Interpolate;

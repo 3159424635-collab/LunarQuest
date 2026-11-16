@@ -68,8 +68,8 @@ namespace LunarQuest
             inVehicle = false;
             rover.enabled = false;
             if (roverCamera) roverCamera.gameObject.SetActive(false);
-            // 下车点按车身朝向变换到世界坐标，避免下到车底或坡内
-            player.position = transform.TransformPoint(exitOffset);
+            // 下车点按车身朝向变换到世界坐标，抬高少许防止卡进地面或车体碰撞
+            player.position = transform.TransformPoint(exitOffset) + Vector3.up * 0.35f;
             player.gameObject.SetActive(true);
         }
     }
