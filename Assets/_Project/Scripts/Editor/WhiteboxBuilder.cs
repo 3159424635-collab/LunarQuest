@@ -309,28 +309,18 @@ namespace LunarQuest.EditorTools
             sd.autoRange = 4.5f;
             sd.prompt = "按 E 开门（靠近自动开启）";
 
-            // 气闸大门：玻璃罩南口 6m 自动感应双扇
-            var gateRoot = new GameObject("AirlockGate");
-            gateRoot.transform.position = new Vector3(-7.7f, y0, 154.0f);
-            GameObject GatePanel(string n, float xOff)
+            // 出生点→穹顶门的引导路标（橙色短柱）
+            var postMat = LoadOrCreateMat("M_TrimOrange", new Color(0.85f, 0.45f, 0.16f));
+            for (int i = 0; i < 5; i++)
             {
-                var p = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                p.name = n;
-                p.transform.SetParent(gateRoot.transform, false);
-                p.transform.localPosition = new Vector3(xOff, 2.1f, 0f);
-                p.transform.localScale = new Vector3(3.1f, 4.2f, 0.3f);
-                p.GetComponent<Renderer>().sharedMaterial = panelMat;
-                return p;
+                var post = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                post.name = $"PathPost_{i}";
+                float px = Mathf.Lerp(0f, -4f, i / 4f);
+                float pz = 152f + i * 4.2f;
+                post.transform.localScale = new Vector3(0.25f, 1.1f, 0.25f);
+                post.transform.position = new Vector3(px + 1.6f, ground(new Vector3(px, 0f, pz)) + 0.55f, pz);
+                post.GetComponent<Renderer>().sharedMaterial = postMat;
             }
-            var gl = GatePanel("GateL", -1.6f);
-            var gr = GatePanel("GateR", 1.6f);
-            var gate = gateRoot.AddComponent<SlidingDoor>();
-            gate.panelL = gl.transform;
-            gate.panelR = gr.transform;
-            gate.openOffset = 3.0f;
-            gate.speed = 1.6f;
-            gate.autoRange = 8f;
-            gate.prompt = "气闸门（靠近自动开启）";
 
 
             // 展台 ×3 环绕全息台（避开南门/西走廊/北走廊三个方向）
@@ -423,7 +413,35 @@ namespace LunarQuest.EditorTools
             domeLight2.range = 12f;
             domeLight2.color = new Color(0.95f, 0.97f, 1f);
             domeLight2.transform.position = new Vector3(-4f, by + 2.2f, 178f);
-            Report.AppendLine("[基地] 穹顶内景：控制台×3+椅子×2（Kenney 成品件）+ 暖光点光源");
+
+            // 气闸门（玻璃罩半球防护体系：人行南闸双道门 + 车行东闸大门，均自动感应）
+            var panelMat2 = LoadOrCreateMat("M_DoorPanel", new Color(0.80f, 0.45f, 0.15f));
+            void AutoDoor(string n, Vector3 pos, float w, float h, float thick, float xOff, float range, float spd)
+            {
+                var root = new GameObject(n);
+                root.transform.position = pos;
+                GameObject Pnl(string pn, float off)
+                {
+                    var p = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    p.name = pn;
+                    p.transform.SetParent(root.transform, false);
+                    p.transform.localPosition = new Vector3(off, h / 2f, 0f);
+                    p.transform.localScale = new Vector3(w / 2f + 0.05f, h, thick);
+                    p.GetComponent<Renderer>().sharedMaterial = panelMat2;
+                    return p;
+                }
+                var d = root.AddComponent<SlidingDoor>();
+                d.panelL = Pnl("L", -xOff).transform;
+                d.panelR = Pnl("R", xOff).transform;
+                d.openOffset = w / 2f + 0.1f;
+                d.speed = spd;
+                d.autoRange = range;
+                d.prompt = "气闸门（靠近自动开启）";
+            }
+            AutoDoor("Airlock_S_Outer", new Vector3(-8f, by, 153.65f), 3.2f, 2.7f, 0.12f, 0.8f, 5f, 2.5f);
+            AutoDoor("Airlock_S_Inner", new Vector3(-8f, by, 158.35f), 3.2f, 2.7f, 0.12f, 0.8f, 5f, 2.5f);
+            AutoDoor("Airlock_E_Gate", new Vector3(22.9f, by, 184f), 5.6f, 4.6f, 0.25f, 1.4f, 9f, 1.6f);
+            Report.AppendLine("[基地] 玻璃半球防护罩+结构网格+压力环；南人气闸双道门+东车闸大门（均自动）");
         }
 
         // 基地原材质同为 Built-in 管线：按零件名映射到 URP 平色材质
@@ -927,7 +945,7 @@ namespace LunarQuest.EditorTools
                 (new Vector3(-4f, 2.2f, 148f), new Vector3(-4f, 1.5f, 162f)),    // 展览舱门口
                 (new Vector3(-4f, 3.4f, 173.5f), new Vector3(-4f, 2.4f, 179.5f)),// 穹顶内部
                 (new Vector3(-4f, 2.6f, 168.5f), new Vector3(-4f, 2.4f, 176f)),  // 穿南门看大厅
-                (new Vector3(-7.7f, 6f, 146.5f), new Vector3(-7.7f, 3f, 158f)),  // 气闸门外望罩内
+                (new Vector3(-8f, 5f, 147f), new Vector3(-8f, 2.6f, 159f)),      // 南气闸外观
             });
         }
 
