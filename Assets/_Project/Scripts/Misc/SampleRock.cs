@@ -3,16 +3,18 @@ using UnityEngine;
 namespace LunarQuest
 {
     /// <summary>
-    /// 白盒测试用的样本岩石：看向它按 E，控制台输出采集日志并消失。
-    /// 用途：验证交互链路是否打通。正式版会升级为"按住 E 进度条采样"并接入任务系统。
+    /// 勘测点样本石：按 E 采集，交给 QuestManager 计数（唯一勘测点、接取校验、
+    /// 0/3 进度由 dialogue.json 的事件节点播出）。采集后石头消失。
+    /// 挂载要求：勘测点岩石；pointId 填唯一标识（A/B/C）。
     /// </summary>
     public class SampleRock : InteractableBase
     {
-        void Reset() => prompt = "按 E 采集月壤样本";
+        [HideInInspector] public string pointId;
 
         public override void Interact(GameObject who)
         {
-            Debug.Log($"[采样] {who.name} 采集了一份月壤样本：{name}");
+            if (QuestManager.I != null) QuestManager.I.OnSamplePoint(pointId);
+            Debug.Log($"[采样] {who.name} 采集勘测点 {pointId}");
             Destroy(gameObject);
         }
     }

@@ -178,6 +178,12 @@ namespace LunarQuest.EditorTools
             BuildRockField(Ground);
             BuildMinimap(player.transform);
 
+            var qmGo = new GameObject("QuestManager");
+            var qm = qmGo.AddComponent<QuestManager>();
+            qm.database = AssetDatabase.LoadAssetAtPath<TextAsset>(
+                "Assets/_Project/Content/Characters/dialogue.json");
+            qm.startEvent = "eva_tutorial_start";
+            qmGo.transform.position = Vector3.zero;
             player.GetComponent<HUDController>().SetQuest("E 开门/交谈/查看展品 · F 上下月球车 · V 切换视角");
 
             const string scenePath = "Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity";
@@ -592,6 +598,7 @@ namespace LunarQuest.EditorTools
             var player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             player.name = "Player";
             UnityEngine.Object.DestroyImmediate(player.GetComponent<CapsuleCollider>());
+            player.tag = "Player";
             var cc = player.AddComponent<CharacterController>();
             cc.height = 1.8f;
             cc.radius = 0.35f;
@@ -800,10 +807,10 @@ namespace LunarQuest.EditorTools
             var anim = go.GetComponent<Animator>() ?? go.AddComponent<Animator>();
             anim.runtimeAnimatorController = BuildNpcController(fileId, path);
             anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-            var stub = go.AddComponent<NpcDialogueStub>();
-            stub.animator = anim;
-            stub.line = line;
-            stub.prompt = $"与{display.Split('_')[0]}交谈（E）";
+            var npc = go.AddComponent<NpcInteractor>();
+            npc.animator = anim;
+            npc.characterId = fileId;
+            npc.prompt = $"与{display.Split('_')[0]}交谈（E）";
             Report.AppendLine($"[NPC] {display} @ ({pos.x:F0},{pos.z:F0})，idle/talk，E 可交互");
         }
 
@@ -880,10 +887,18 @@ namespace LunarQuest.EditorTools
                     new Vector3(0f, 37f * i, 0f));
                 if (rock != null)
                 {
-                    rock.AddComponent<SampleRock>().prompt = $"按 E 采集月壤样本（{i + 1}/3）";
+                    var sr = rock.AddComponent<SampleRock>();
+                sr.pointId = "crater03_sample_" + tags[i].ToLowerInvariant();
+                sr.prompt = $"按 E 采集月壤样本（{i + 1}/3）";
                 }
             }
-            Report.AppendLine("[采样] 3 号坑内 3 个采样点 + 可交互样本石（Kenney 岩石模型）");
+            var trig = new GameObject("Crater03Trigger");
+            var tcol = trig.AddComponent<BoxCollider>();
+            tcol.isTrigger = true;
+            tcol.size = new Vector3(56f, 16f, 56f);
+            trig.transform.position = new Vector3(80f, Ground(new Vector3(80f, 0f, 140f)) + 6f, 140f);
+            trig.AddComponent<AreaEvent>().eventName = "enter_crater03_sampling_area";
+            Report.AppendLine("[采样] 3 号坑 3 勘测点 + 进入采样区触发器（任务事件接入）");
         }
 
         static readonly string[] RockVariants = { "rocks", "rocksSmall", "rocksTall", "rocksOre", "meteorHalf" };

@@ -51,6 +51,9 @@ namespace LunarQuest
         /// <summary>任务系统调用：更新当前任务提示。</summary>
         public void SetQuest(string text) => quest = text;
 
+        /// <summary>任务系统调用：显示台词/系统提示（复用提示行，短暂顶替交互提示）。</summary>
+        public void SetPrompt(string text) => prompt = text;
+
         void OnGUI()
         {
             if (!showDebugHud) return;

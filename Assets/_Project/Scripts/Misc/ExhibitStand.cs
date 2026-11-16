@@ -14,7 +14,13 @@ namespace LunarQuest
 
         bool showing;
 
-        public override void Interact(GameObject who) => showing = !showing;
+        public override void Interact(GameObject who)
+        {
+            showing = !showing;
+            if (QuestManager.I == null) return;
+            if (showing) QuestManager.I.OnExhibitOpened();
+            else QuestManager.I.OnExhibitClosed();
+        }
 
         void OnGUI()
         {
