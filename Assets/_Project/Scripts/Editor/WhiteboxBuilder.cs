@@ -181,6 +181,7 @@ namespace LunarQuest.EditorTools
             BuildKenneyBase(Ground);
             BuildExhibitHall(Ground);
             BuildLighting(Ground);
+            BuildSealWall(Ground);
             PlaceNpc("base_coordinator", "周航_协调员", new Vector3(8f, 0f, 164f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
             PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(4f, 0f, 181f), Ground, "样本先放我这里，参观完科普厅再走。");
             PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(14f, 0f, 172f), Ground, "车就在外面，月面路滑，慢点开。");
@@ -299,6 +300,33 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             };
             AssetDatabase.CreateAsset(pm, path);
             return pm;
+        }
+
+
+        // ===== 物理密封墙：不可见 BoxCollider 圆环，360° 封锁，仅气闸口留豁 =====
+        static void BuildSealWall(Func<Vector3, float> ground)
+        {
+            float scx = 4f, scz = 190f;  // 罩心
+            float sr = 53f;               // 略大于玻璃罩半径
+            float wallH = 36f;            // 墙高（覆盖玻璃大半）
+            // 两个气闸豁口方向（Unity 角度）：南≈270°、西≈180°
+            // 豁口半角：南 8°、西 12°
+            for (int deg = 0; deg < 360; deg += 6)
+            {
+                float rad = deg * Mathf.PI / 180f;
+                float dFromS = Mathf.Abs(Mathf.DeltaAngle(deg, 270));
+                float dFromW = Mathf.Abs(Mathf.DeltaAngle(deg, 180));
+                if (dFromS < 10f || dFromW < 11f) continue; // 气闸口跳过
+
+                var wall = new GameObject($"SealWall_{deg}");
+                wall.transform.position = new Vector3(scx + sr * Mathf.Cos(rad), 0f, scz + sr * Mathf.Sin(rad));
+                wall.transform.rotation = Quaternion.Euler(0f, -deg + 90f, 0f);
+                var col = wall.AddComponent<BoxCollider>();
+                // 每块宽 ≈ 2π×53/60 ≈ 5.5m（含重叠），厚 1m，高 wallH
+                col.size = new Vector3(6.5f, wallH, 1f);
+                col.center = new Vector3(0f, ground(new Vector3(wall.transform.position.x, 0f, wall.transform.position.z)) + wallH / 2f, 0f);
+            }
+            Report.AppendLine("[密封] 不可见物理墙×60 环绕罩周（仅南北气闸口留豁）");
         }
 
         // ===== 照明系统 =====
