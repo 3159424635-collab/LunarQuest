@@ -19,12 +19,7 @@ namespace LunarQuest
         DialogueDatabase db;
         readonly Dictionary<string, string> state = new Dictionary<string, string>();
         readonly HashSet<string> collectedPoints = new HashSet<string>();
-        DlgNode pendingChoice;
         HUDController hud;
-
-        // 字幕
-        string subSpeaker, subText;
-        float subUntil;
 
         void Awake()
         {
@@ -102,7 +97,7 @@ namespace LunarQuest
             ApplyEffects(n.effects);
             if (!string.IsNullOrEmpty(n.text)) ShowSub(n);
             if (!string.IsNullOrEmpty(n.task_id)) UpdateTaskHud(n.task_id);
-            if (n.choices != null && n.choices.Length > 0) pendingChoice = n;
+            if (n.choices != null && n.choices.Length > 0) PresentChoices(n);
         }
 
         void ApplyEffects(DlgEffect[] effects)
@@ -154,40 +149,28 @@ namespace LunarQuest
 
         void ShowSub(string who, string text)
         {
-            subSpeaker = who; subText = text;
-            subUntil = Time.time + Mathf.Max(4f, text.Length * 0.12f);
-            if (hud != null) hud.SetPrompt(text);
+            if (SciFiHUD.I != null)
+                SciFiHUD.I.ShowSubtitle(who, text, Mathf.Max(4f, text.Length * 0.12f));
+            else if (hud != null) hud.SetPrompt(text);
         }
 
-        // ---------------- UI（OnGUI 白盒层，模块四接正式 UI 时替换） ----------------
+        // ---------------- 选项（SciFiHUD 赛博风按钮） ----------------
 
-        void OnGUI()
+        void PresentChoices(DlgNode n)
         {
-            if (!string.IsNullOrEmpty(subText) && Time.time < subUntil)
-            {
-                Rect r = new Rect(Screen.width * 0.14f, Screen.height * 0.78f,
-                    Screen.width * 0.72f, 64f);
-                GUI.Box(r, subSpeaker);
-                GUI.Label(new Rect(r.x + 12f, r.y + 26f, r.width - 24f, 34f), subText);
-            }
+            var opts = new List<string>();
+            foreach (var c in n.choices) opts.Add(c.text);
+            if (SciFiHUD.I != null)
+                SciFiHUD.I.ShowChoices(opts, i => ApplyChoice(n, i));
+        }
 
-            if (pendingChoice == null) return;
-            Rect p = new Rect(Screen.width * 0.2f, Screen.height * 0.6f,
-                Screen.width * 0.6f, 40f + pendingChoice.choices.Length * 38f);
-            GUI.Box(p, "选择");
-            for (int i = 0; i < pendingChoice.choices.Length; i++)
-            {
-                var ch = pendingChoice.choices[i];
-                if (GUI.Button(new Rect(p.x + 16f, p.y + 32f + i * 36f, p.width - 32f, 30f), ch.text))
-                {
-                    ApplyEffects(ch.effects);
-                    var node = pendingChoice;
-                    pendingChoice = null;
-                    if (!string.IsNullOrEmpty(ch.next_node))
-                        foreach (var n in db.Nodes)
-                            if (n.id == ch.next_node && ConditionsOk(n)) { RunNode(n); break; }
-                }
-            }
+        void ApplyChoice(DlgNode node, int index)
+        {
+            var ch = node.choices[index];
+            ApplyEffects(ch.effects);
+            if (!string.IsNullOrEmpty(ch.next_node))
+                foreach (var n in db.Nodes)
+                    if (n.id == ch.next_node && ConditionsOk(n)) { RunNode(n); break; }
         }
     }
 }

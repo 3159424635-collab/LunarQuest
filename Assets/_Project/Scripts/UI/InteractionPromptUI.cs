@@ -11,6 +11,7 @@ namespace LunarQuest
     /// </summary>
     public class InteractionPromptUI : MonoBehaviour
     {
+        public Font font;   // 搭建脚本注入思源黑体
         CanvasGroup group;
         Image badge;
         Text badgeText;
@@ -109,9 +110,9 @@ namespace LunarQuest
             return r;
         }
 
-        static void SetupText(Text t, int size, FontStyle style, Color color, TextAnchor anchor)
+        void SetupText(Text t, int size, FontStyle style, Color color, TextAnchor anchor)
         {
-            t.font = GetFont();
+            t.font = font != null ? font : GetFont();
             t.fontSize = size;
             t.fontStyle = style;
             t.color = color;

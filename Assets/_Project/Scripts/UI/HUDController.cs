@@ -17,7 +17,7 @@ namespace LunarQuest
         public UnityEngine.UI.Text questText;    // 任务提示
 
         [Header("白盒调试显示")]
-        public bool showDebugHud = true;
+        public bool showDebugHud = false;
 
         PlayerInteractor interactor;
         RoverController rover;
@@ -46,6 +46,7 @@ namespace LunarQuest
             if (speedText) speedText.text = speed;
             if (promptText) promptText.text = prompt ?? "";
             if (questText) questText.text = quest;
+            if (SciFiHUD.I != null) { SciFiHUD.I.SetSpeed(speed); SciFiHUD.I.SetQuest(quest ?? ""); }
         }
 
         /// <summary>任务系统调用：更新当前任务提示。</summary>

@@ -100,7 +100,11 @@ namespace LunarQuest.EditorTools
             PlaceNpc("ground_flight_controller", "林岚_飞控", new Vector3(31f, 0f, -11f), Flat,
                 "欢迎加入任务。跟我来，先熟悉操作，再去看发射。");
             var player = BuildPlayer(new Vector3(35f, 0f, -7f), Flat);
-            new GameObject("InteractionPromptUI").AddComponent<InteractionPromptUI>();
+            var sciFont1 = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/NotoSansCJKsc-Regular.otf");
+            var sci1 = new GameObject("SciFiHUD").AddComponent<SciFiHUD>();
+            sci1.font = sciFont1;
+            var promptUi1 = new GameObject("InteractionPromptUI").AddComponent<InteractionPromptUI>();
+            promptUi1.font = sciFont1;
             var qm1 = new GameObject("QuestManager").AddComponent<QuestManager>();
             qm1.database = AssetDatabase.LoadAssetAtPath<TextAsset>(
                 "Assets/_Project/Content/Characters/dialogue.json");
@@ -183,7 +187,11 @@ namespace LunarQuest.EditorTools
             BuildRockField(Ground);
             BuildMinimap(player.transform);
 
-            new GameObject("InteractionPromptUI").AddComponent<InteractionPromptUI>();
+var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/NotoSansCJKsc-Regular.otf");
+            var sci = new GameObject("SciFiHUD").AddComponent<SciFiHUD>();
+            sci.font = sciFont;
+            var promptUi = new GameObject("InteractionPromptUI").AddComponent<InteractionPromptUI>();
+            promptUi.font = sciFont;
             var qmGo = new GameObject("QuestManager");
             var qm = qmGo.AddComponent<QuestManager>();
             qm.database = AssetDatabase.LoadAssetAtPath<TextAsset>(
