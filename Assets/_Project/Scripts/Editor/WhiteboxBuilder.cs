@@ -575,7 +575,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 t.name = n;
                 t.transform.position = c;
                 t.transform.localScale = s;
-                t.GetComponent<Renderer>().sharedMaterial = tunnelMat;
+                UnityEngine.Object.DestroyImmediate(t.GetComponent<MeshRenderer>()); // 不可见，仅碰撞密封
             }
             Tunnel("AirTunnel_Floor", new Vector3(4f, by + 0.05f, 134f), new Vector3(13.8f, 0.12f, 9.4f));
             Tunnel("AirTunnel_Ceil", new Vector3(4f, by + 6.1f, 134f), new Vector3(14.6f, 0.16f, 9.4f));
