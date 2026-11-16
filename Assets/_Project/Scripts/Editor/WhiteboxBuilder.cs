@@ -180,6 +180,7 @@ namespace LunarQuest.EditorTools
             BuildRover(new Vector3(10f, 0f, 168f), Ground, player.transform);
             BuildKenneyBase(Ground);
             BuildExhibitHall(Ground);
+            BuildLighting(Ground);
             PlaceNpc("base_coordinator", "周航_协调员", new Vector3(8f, 0f, 164f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
             PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(4f, 0f, 181f), Ground, "样本先放我这里，参观完科普厅再走。");
             PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(14f, 0f, 172f), Ground, "车就在外面，月面路滑，慢点开。");
@@ -226,7 +227,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             sun.shadows = LightShadows.Soft;
             sun.transform.rotation = Quaternion.Euler(55f, -35f, 0f);
             RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.13f, 0.14f, 0.18f); // 月面夜空环境光
+            RenderSettings.ambientLight = new Color(0.22f, 0.24f, 0.30f); // 月面环境光（提亮）
         }
 
         // 星空天空盒：Poly Haven CC0 纯星空全景图（无地面）
@@ -298,6 +299,88 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             };
             AssetDatabase.CreateAsset(pm, path);
             return pm;
+        }
+
+        // ===== 照明系统 =====
+        static GameObject BuildLampPost(Vector3 pos, float groundY, float height, string name)
+        {
+            var root = new GameObject(name);
+            root.transform.position = new Vector3(pos.x, groundY, pos.z);
+            var pole = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            pole.name = "Pole";
+            pole.transform.SetParent(root.transform, false);
+            pole.transform.localPosition = new Vector3(0f, height / 2f, 0f);
+            pole.transform.localScale = new Vector3(0.1f, height / 2f, 0.1f);
+            pole.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_SkirtDark", new Color(0.18f, 0.20f, 0.24f));
+            var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            head.name = "LampHead";
+            head.transform.SetParent(root.transform, false);
+            head.transform.localPosition = new Vector3(0f, height + 0.12f, 0f);
+            head.transform.localScale = new Vector3(0.5f, 0.24f, 0.5f);
+            head.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_LampGlow", new Color(0.75f, 0.95f, 1f));
+            var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            ring.name = "AccentRing";
+            ring.transform.SetParent(root.transform, false);
+            ring.transform.localPosition = new Vector3(0f, 0.06f, 0f);
+            ring.transform.localScale = new Vector3(0.22f, 0.04f, 0.22f);
+            ring.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_TrimOrange", new Color(0.85f, 0.45f, 0.16f));
+            var l = new GameObject("Light").AddComponent<Light>();
+            l.type = LightType.Point; l.intensity = 1.8f; l.range = 12f;
+            l.color = new Color(0.82f, 0.94f, 1f);
+            l.transform.SetParent(root.transform, false);
+            l.transform.localPosition = new Vector3(0f, height + 0.2f, 0f);
+            return root;
+        }
+
+        static void BuildLighting(Func<Vector3, float> ground)
+        {
+            (float x, float z)[] lamps =
+            {
+                (-14, 168), (6, 168), (-14, 188), (6, 188),
+                (-20, 178), (12, 178), (-10, 195), (2, 195),
+                (10, 132), (-2, 132), (14, 165), (18, 172),
+            };
+            foreach (var (lx, lz) in lamps)
+            {
+                var pp = new Vector3(lx, 0f, lz);
+                BuildLampPost(pp, ground(pp), 2.8f, $"Lamp_{lx}_{lz}");
+            }
+            float cy = ground(new Vector3(-10f, 0f, 178f));
+            var cA = new GameObject("CorALight").AddComponent<Light>();
+            cA.type = LightType.Point; cA.intensity = 1.2f; cA.range = 8f; cA.color = new Color(0.9f, 0.95f, 1f);
+            cA.transform.position = new Vector3(-10f, cy + 2.6f, 178f);
+            var cB = new GameObject("CorBLight").AddComponent<Light>();
+            cB.type = LightType.Point; cB.intensity = 1.2f; cB.range = 8f; cB.color = new Color(0.9f, 0.95f, 1f);
+            cB.transform.position = new Vector3(-4f, ground(new Vector3(-4f, 0f, 193f)) + 2.6f, 193f);
+            var aS = new GameObject("AirSLight").AddComponent<Light>();
+            aS.type = LightType.Point; aS.intensity = 1.5f; aS.range = 8f; aS.color = new Color(0.85f, 0.95f, 1f);
+            aS.transform.position = new Vector3(4f, ground(new Vector3(4f, 0f, 134f)) + 3.5f, 134f);
+            var gW = new GameObject("GateWLight").AddComponent<Light>();
+            gW.type = LightType.Point; gW.intensity = 2.0f; gW.range = 12f; gW.color = new Color(0.85f, 0.95f, 1f);
+            gW.transform.position = new Vector3(-53f, ground(new Vector3(-53f, 0f, 190f)) + 5f, 190f);
+            float dy = ground(new Vector3(-4f, 0f, 178f));
+            for (int i = 0; i < 4; i++)
+            {
+                var dl = new GameObject($"DomeFill_{i}").AddComponent<Light>();
+                dl.type = LightType.Point; dl.intensity = 1.0f; dl.range = 14f; dl.color = new Color(0.9f, 0.95f, 1f);
+                float ang = i * Mathf.PI / 2f + Mathf.PI / 4f;
+                dl.transform.position = new Vector3(-4f + Mathf.Cos(ang) * 6f, dy + 3.5f, 178f + Mathf.Sin(ang) * 6f);
+            }
+            var mA = new GameObject("ModALight").AddComponent<Light>();
+            mA.type = LightType.Point; mA.intensity = 1.4f; mA.range = 10f; mA.color = new Color(0.95f, 0.97f, 1f);
+            mA.transform.position = new Vector3(12f, ground(new Vector3(12f, 0f, 178f)) + 2.8f, 178f);
+            var mB = new GameObject("ModBLight").AddComponent<Light>();
+            mB.type = LightType.Point; mB.intensity = 1.4f; mB.range = 10f; mB.color = new Color(0.95f, 0.97f, 1f);
+            mB.transform.position = new Vector3(-4f, ground(new Vector3(-4f, 0f, 197f)) + 2.8f, 197f);
+            for (int i = 0; i < 6; i++)
+            {
+                float px = Mathf.Lerp(0f, 4f, i / 5f);
+                float pz = 114f + i * 4.5f;
+                var pl = new GameObject($"PathSrc_{i}").AddComponent<Light>();
+                pl.type = LightType.Point; pl.intensity = 0.6f; pl.range = 5f; pl.color = new Color(0.5f, 0.9f, 1f);
+                pl.transform.position = new Vector3(px, ground(new Vector3(px, 0f, pz)) + 0.3f, pz);
+            }
+            Report.AppendLine($"[照明] 灯柱×{lamps.Length} + 走廊/气闸/穹顶/舱段/路径 = 共{lamps.Length + 16}个光源");
         }
 
         // 展览区并入穹顶大厅：滑动门装在穹顶南门，展台环绕全息台。
