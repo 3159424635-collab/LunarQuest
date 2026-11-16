@@ -182,6 +182,8 @@ namespace LunarQuest.EditorTools
             BuildExhibitHall(Ground);
             BuildLighting(Ground);
             BuildSealWall(Ground);
+            BuildAirlockPortal(new Vector3(4f, 0f, 129.0f), 0f, 13.2f, 5.4f, Ground, "Portal_S");
+            BuildAirlockPortal(new Vector3(-58f, 0f, 190f), 90f, 18f, 9.2f, Ground, "Portal_W");
             PlaceNpc("base_coordinator", "周航_协调员", new Vector3(8f, 0f, 164f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
             PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(4f, 0f, 181f), Ground, "样本先放我这里，参观完科普厅再走。");
             PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(14f, 0f, 172f), Ground, "车就在外面，月面路滑，慢点开。");
@@ -327,6 +329,56 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 col.center = new Vector3(0f, ground(new Vector3(wall.transform.position.x, 0f, wall.transform.position.z)) + wallH / 2f, 0f);
             }
             Report.AppendLine("[密封] 不可见物理墙×60 环绕罩周（仅南北气闸口留豁）");
+        }
+
+
+        // ===== 可见气闸门框罩壳：从外面看是完整的门面墙，零视觉缝隙 =====
+        static void BuildAirlockPortal(Vector3 center, float yaw, float doorW, float doorH,
+            Func<Vector3, float> ground, string name)
+        {
+            var hull = LoadOrCreateMat("M_HullWhite", new Color(0.82f, 0.83f, 0.86f));
+            var trim = LoadOrCreateMat("M_TrimOrange", new Color(0.85f, 0.45f, 0.16f));
+            var dark = LoadOrCreateMat("M_SkirtDark", new Color(0.18f, 0.20f, 0.24f));
+            float gy = ground(center);
+
+            var root = new GameObject(name);
+            root.transform.position = new Vector3(center.x, gy, center.z);
+            root.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+
+            // 门面墙：比门洞大一大圈，完全覆盖门洞周围的缝隙
+            float wallW = doorW + 3.0f;   // 两侧各多 1.5m
+            float wallH = doorH + 1.5f;   // 上方多 1.5m
+            float wallT = 0.4f;           // 墙厚
+
+            void Panel(string n, float lx, float ly, float lz, float sx, float sy, float sz, Material m)
+            {
+                var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                g.name = n;
+                g.transform.SetParent(root.transform, false);
+                g.transform.localPosition = new Vector3(lx, ly, lz);
+                g.transform.localScale = new Vector3(sx, sy, sz);
+                g.GetComponent<Renderer>().sharedMaterial = m;
+            }
+
+            // 整面墙（中央开门洞：左右上三块）
+            float sideW = (wallW - doorW) / 2f;
+            Panel($"{name}_L", -(doorW / 2f + sideW / 2f), wallH / 2f, 0f, sideW, wallH, wallT, hull);
+            Panel($"{name}_R", (doorW / 2f + sideW / 2f), wallH / 2f, 0f, sideW, wallH, wallT, hull);
+            Panel($"{name}_Top", 0f, doorH + (wallH - doorH) / 2f, 0f, doorW, wallH - doorH, wallT, hull);
+
+            // 门框装饰条（橙色，紧贴门洞边缘）
+            Panel($"{name}_TrimL", -(doorW / 2f + 0.12f), doorH / 2f, 0.21f, 0.24f, doorH + 0.2f, 0.06f, trim);
+            Panel($"{name}_TrimR", (doorW / 2f + 0.12f), doorH / 2f, 0.21f, 0.24f, doorH + 0.2f, 0.06f, trim);
+            Panel($"{name}_TrimT", 0f, doorH + 0.12f, 0.21f, doorW + 0.5f, 0.24f, 0.06f, trim);
+
+            // 底槛
+            Panel($"{name}_Sill", 0f, 0.08f, 0.05f, doorW + 0.3f, 0.16f, wallT + 0.1f, dark);
+
+            // 两侧延伸翼墙（封住气闸侧面与玻璃罩之间的缝隙）
+            Panel($"{name}_WingL", -(wallW / 2f + 1.0f), wallH / 2f, 0f, 2.0f, wallH, wallT, hull);
+            Panel($"{name}_WingR", (wallW / 2f + 1.0f), wallH / 2f, 0f, 2.0f, wallH, wallT, hull);
+
+            Report.AppendLine($"[门框] {name}: 门面墙 {wallW:F0}×{wallH:F0}m + 橙色门框 + 翼墙（视觉密封）");
         }
 
         // ===== 照明系统 =====
