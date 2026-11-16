@@ -38,11 +38,126 @@ namespace LunarQuest.EditorTools
 
         static readonly StringBuilder Report = new StringBuilder();
 
+        [MenuItem("工具/月征/搭建 S1 发射场")]
+        public static void BuildLaunchSite()
+        {
+            Report.Clear();
+            EnsureFolders();
+            FixKenneyMaterials();
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            // 地球白天氛围：程序化蓝天 + 暖阳光
+            var sun = new GameObject("Sun").AddComponent<Light>();
+            sun.type = LightType.Directional;
+            sun.intensity = 1.25f;
+            sun.shadows = LightShadows.Soft;
+            sun.transform.rotation = Quaternion.Euler(62f, 25f, 0f);
+            RenderSettings.ambientMode = AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.55f, 0.58f, 0.62f);
+            const string skyPath = "Assets/_Project/Art/Materials/Skybox_Earth.mat";
+            var sky = AssetDatabase.LoadAssetAtPath<Material>(skyPath);
+            if (sky == null)
+            {
+                sky = new Material(Shader.Find("Skybox/Procedural")) { name = "Skybox_Earth" };
+                AssetDatabase.CreateAsset(sky, skyPath);
+            }
+            RenderSettings.skybox = sky;
+
+            // 草原地面 800×800
+            var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            ground.name = "Ground";
+            ground.transform.localScale = new Vector3(80f, 1f, 80f);
+            ground.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_EarthGround", new Color(0.42f, 0.50f, 0.34f));
+            float Flat(Vector3 p) => 0f;
+
+            // 发射台基座
+            var pad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            pad.name = "LaunchPad";
+            pad.transform.localScale = new Vector3(36f, 0.5f, 36f);
+            pad.transform.position = new Vector3(0f, 0.5f, -46f);
+            pad.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_Concrete", new Color(0.62f, 0.62f, 0.60f));
+
+            // 土星五号（竖直构件按高度归一化至 110m）
+            PlaceModelHeight(ModelDir + "/土星五号火箭.fbx", 110f, new Vector3(0f, 0.9f, -46f), Flat, "SaturnV", true);
+
+            // 发射塔（Kenney 桁架两节）+ 安全区围栏
+            PlaceKenneyHeight("metalStructure", 24f, new Vector3(13f, 0f, -46f), Flat, "TowerA", false);
+            PlaceKenneyHeight("metalStructure", 24f, new Vector3(13f, 0f, -54f), Flat, "TowerB", false);
+            (Vector3 p, float r)[] fences =
+            {
+                (new Vector3(0f, 0f, -22f), 180f), (new Vector3(0f, 0f, -70f), 0f),
+                (new Vector3(26f, 0f, -46f), 270f), (new Vector3(-26f, 0f, -46f), 90f),
+            };
+            for (int i = 0; i < fences.Length; i++)
+                PlaceKenney("metalFence", 24f, fences[i].p, Flat, "PadFence_" + i, false, new Vector3(0f, fences[i].r, 0f));
+
+            // 指挥中心与控制台
+            PlaceKenney("buildingOpen", 12f, new Vector3(38f, 0f, -20f), Flat, "ControlCenter", true, new Vector3(0f, -90f, 0f));
+            PlaceKenney("console", 2.6f, new Vector3(35f, 0f, -17f), Flat, "Console_A", false, null);
+            PlaceKenney("console", 2.6f, new Vector3(41f, 0f, -17f), Flat, "Console_B", false, null);
+
+            // 林岚与玩家
+            PlaceNpc("ground_flight_controller", "林岚_飞控", new Vector3(31f, 0f, -11f), Flat,
+                "欢迎加入任务。跟我来，先熟悉操作，再去看发射。");
+            var player = BuildPlayer(new Vector3(35f, 0f, -7f), Flat);
+            player.GetComponent<HUDController>().SetQuest("走近飞控林岚按 E 交谈，完成发射前检查");
+
+            const string scenePath = "Assets/_Project/Scenes/S1_LaunchSite.unity";
+            EditorSceneManager.SaveScene(scene, scenePath);
+            RenderPreviewsAt("s1", new[]
+            {
+                (new Vector3(75f, 32f, 2f), new Vector3(0f, 45f, -46f)),   // 火箭全景
+                (new Vector3(35f, 4f, -2f), new Vector3(8f, 18f, -40f)),    // 玩家视角望向火箭
+            });
+            Directory.CreateDirectory("Logs");
+            File.WriteAllText("Logs/s1_report.txt", Report.ToString());
+            Debug.Log("[WhiteboxBuilder] S1 发射场搭建完成\n" + Report);
+        }
+
+        [MenuItem("工具/月征/搭建全部场景")]
+        public static void BuildEverything()
+        {
+            BuildLaunchSite();
+            BuildAll();
+        }
+
+        // 按高度归一化摆放（竖直构件：火箭、塔架等）
+        static GameObject PlaceModelHeight(string path, float targetHeight, Vector3 pos,
+            Func<Vector3, float> ground, string name, bool addCollider)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+            if (prefab == null)
+            {
+                Debug.LogError("[WhiteboxBuilder] 找不到 " + path);
+                return null;
+            }
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            go.name = name;
+            go.transform.position = Vector3.zero;
+            go.transform.localScale = Vector3.one;
+            Bounds b0 = LocalBounds(go.transform);
+            float s = targetHeight / Mathf.Max(b0.size.y, 0.01f);
+            go.transform.localScale = Vector3.one * s;
+            Bounds b1 = LocalBounds(go.transform);
+            go.transform.position = new Vector3(pos.x, ground(pos) - b1.min.y, pos.z);
+            if (addCollider)
+            {
+                var box = go.AddComponent<BoxCollider>();
+                box.center = new Vector3(b1.center.x / s, b1.center.y / s, b1.center.z / s);
+                box.size = new Vector3(b1.size.x / s, b1.size.y / s, b1.size.z / s);
+            }
+            GameObjectUtility.SetStaticEditorFlags(go,
+                StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic);
+            Report.AppendLine($"[{name}] 高度归一 {b0.size:F1}m ×{s:F3} → {b1.size:F1}m，落点 ({pos.x:F0},{pos.z:F0})");
+            return go;
+        }
+
         [MenuItem("工具/月征/搭建 S4 白盒场景")]
         public static void BuildAll()
         {
             Report.Clear();
             EnsureFolders();
+            FixKenneyMaterials();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             BuildLighting();
@@ -114,19 +229,38 @@ namespace LunarQuest.EditorTools
             RenderSettings.skybox = mat;
         }
 
+        // Kenney 包自带材质是 Built-in 管线 shader，URP 下渲染为洋红色——统一转换为 URP Lit
+        static void FixKenneyMaterials()
+        {
+            var shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null) return;
+            int fixedCount = 0;
+            foreach (var guid in AssetDatabase.FindAssets("t:Material", new[] { "Assets/Kenney Assets" }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (mat == null || mat.shader == shader) continue;
+                var tex = mat.HasProperty("_MainTex") ? mat.mainTexture : null;
+                var col = mat.HasProperty("_Color") ? mat.color : Color.white;
+                mat.shader = shader;
+                if (tex != null) mat.SetTexture("_BaseMap", tex);
+                mat.SetColor("_BaseColor", col);
+                EditorUtility.SetDirty(mat);
+                fixedCount++;
+            }
+            if (fixedCount > 0) AssetDatabase.SaveAssets();
+            Report.AppendLine($"[材质] Kenney → URP 转换 {fixedCount} 个（已转换的自动跳过）");
+        }
+
         const string KenneyDir = "Assets/Kenney Assets/Space Kit/Models";
 
-        // 低模广寒站：Kenney CC0 模块拼装。主舱为竖直地标塔（按高度归一化限高），
-        // 两侧横置舱段 + 走廊 + 大型天线。
+        // 广寒站：原月球基地 FBX（穹顶+三舱段+走廊+天线结构完整）配色修复后作为主体，
+        // 辅以 Kenney 地标塔与展览区
         static void BuildKenneyBase(Func<Vector3, float> ground)
         {
-            // station 是竖直塔形件：按高度归一化（12m 高），避免横向归一化导致 30m 高楼
-            PlaceKenneyHeight("station", 12f, new Vector3(-4f, 0f, 184f), ground, "Base_MainHall", true);
-            PlaceKenney("buildingOpen", 9f, new Vector3(-22f, 0f, 178f), ground, "Base_ModuleA", true, new Vector3(0f, 90f, 0f));
-            PlaceKenney("buildingOpen", 9f, new Vector3(14f, 0f, 178f), ground, "Base_ModuleB", true, new Vector3(0f, 90f, 0f));
-            PlaceKenney("buildingCorridorOpen", 7f, new Vector3(-13f, 0f, 178f), ground, "Base_LinkA", false, new Vector3(0f, 90f, 0f));
-            PlaceKenney("buildingCorridorOpen", 7f, new Vector3(5f, 0f, 178f), ground, "Base_LinkB", false, new Vector3(0f, 90f, 0f));
-            PlaceKenney("satelliteDishLarge", 5f, new Vector3(24f, 0f, 172f), ground, "Base_Antenna", false, null);
+            var baseGo = PlaceModel(ModelDir + "/月球基地.fbx", 46f, new Vector3(-4f, 0f, 178f), ground, "MoonBase", true, true);
+            RecolorByPartName(baseGo);
+            PlaceKenneyHeight("station", 12f, new Vector3(-4f, 0f, 184f), ground, "Base_Landmark", false);
 
             // 展览区（AR 展品占位）：围栏 + 两艘微缩飞船
             for (int i = 0; i < 4; i++)
@@ -143,7 +277,31 @@ namespace LunarQuest.EditorTools
             }
             PlaceKenney("spaceCraft1", 2.2f, new Vector3(-7f, 0f, 168f), ground, "Exhibit_Ship1", false, null);
             PlaceKenney("spaceCraft2", 2.2f, new Vector3(-1f, 0f, 168f), ground, "Exhibit_Ship2", false, null);
-            Report.AppendLine("[基地] Kenney CC0 模块拼装低模广寒站（地标塔+双舱段+走廊+天线）+ 展览区围栏与两件微缩展品占位");
+            Report.AppendLine("[基地] 穹顶主基地（配色修复）+ 地标塔 + 展览区围栏与两件微缩展品占位");
+        }
+
+        // 基地原材质同为 Built-in 管线：按零件名映射到 URP 平色材质
+        static void RecolorByPartName(GameObject go)
+        {
+            if (go == null) return;
+            var white = LoadOrCreateMat("M_HullWhite", new Color(0.88f, 0.89f, 0.92f));
+            var grey = LoadOrCreateMat("M_HullGrey", new Color(0.55f, 0.57f, 0.60f));
+            var orange = LoadOrCreateMat("M_AccentOrange", new Color(0.85f, 0.45f, 0.16f));
+            var dark = LoadOrCreateMat("M_MetalDark", new Color(0.18f, 0.20f, 0.24f));
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                if (!r.gameObject.activeInHierarchy) continue;
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    string n = mats[i] != null ? mats[i].name.ToLowerInvariant() : "";
+                    mats[i] = n.Contains("white") || n.Contains("hull") && !n.Contains("grey") ? white
+                        : n.Contains("grey") || n.Contains("gray") ? grey
+                        : n.Contains("orange") || n.Contains("accent") || n.Contains("beacon") ? orange
+                        : dark;
+                }
+                r.sharedMaterials = mats;
+            }
         }
 
         // 按高度归一化：用于竖直造型的构件（塔、天线杆等），避免按横向归一化时高度失控
@@ -610,22 +768,25 @@ namespace LunarQuest.EditorTools
             Report.AppendLine("[小地图] 正交相机 512 RenderTexture，M 键切换缩放；界面呈现由模块四接入");
         }
 
-        // 构建产物预览：基地鸟瞰 + 出生点视角两张截图，便于不开编辑器确认效果
+        // 构建产物预览：S4 基地鸟瞰 + 出生点视角
         static void RenderPreviews()
+        {
+            RenderPreviewsAt("scene", new[]
+            {
+                (new Vector3(-4f, 55f, 120f), new Vector3(-4f, 2f, 172f)),   // 基地鸟瞰
+                (new Vector3(0f, 8f, 148f), new Vector3(-4f, 3f, 178f)),     // 出生点望向基地
+            });
+        }
+
+        static void RenderPreviewsAt(string tag, (Vector3 pos, Vector3 look)[] views)
         {
             var rt = new RenderTexture(1280, 720, 24);
             var camGo = new GameObject("PreviewCam");
             var cam = camGo.AddComponent<Camera>();
             cam.nearClipPlane = 0.1f;
-            cam.farClipPlane = 1200f;
+            cam.farClipPlane = 3000f;
             cam.fieldOfView = 55f;
             cam.targetTexture = rt;
-
-            (Vector3 pos, Vector3 look)[] views =
-            {
-                (new Vector3(-4f, 55f, 120f), new Vector3(-4f, 2f, 172f)),   // 基地鸟瞰
-                (new Vector3(0f, 8f, 148f), new Vector3(-4f, 3f, 178f)),     // 出生点望向基地
-            };
             for (int i = 0; i < views.Length; i++)
             {
                 cam.transform.position = views[i].pos;
@@ -635,7 +796,7 @@ namespace LunarQuest.EditorTools
                 var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
                 tex.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
                 tex.Apply();
-                File.WriteAllBytes($"Logs/scene_preview_{i}.png", tex.EncodeToPNG());
+                File.WriteAllBytes($"Logs/{tag}_preview_{i}.png", tex.EncodeToPNG());
                 UnityEngine.Object.DestroyImmediate(tex);
             }
             cam.targetTexture = null;
@@ -648,6 +809,8 @@ namespace LunarQuest.EditorTools
             var list = new List<EditorBuildSettingsScene>();
             const string showcase = "Assets/_Project/Cinematics/Module4/Demo/Module4Showcase.unity";
             if (File.Exists(showcase)) list.Add(new EditorBuildSettingsScene(showcase, true));
+            const string s1 = "Assets/_Project/Scenes/S1_LaunchSite.unity";
+            if (File.Exists(s1)) list.Add(new EditorBuildSettingsScene(s1, true));
             list.Add(new EditorBuildSettingsScene(s4Path, true));
             EditorBuildSettings.scenes = list.ToArray();
         }
