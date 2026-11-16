@@ -424,30 +424,16 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             baseGo.transform.localScale = Vector3.one * 2f;   // 整体放大两倍
             Bounds b = LocalBounds(baseGo.transform);
             baseGo.transform.position = new Vector3(-4f, ground(new Vector3(-4f, 0f, 178f)) - b.min.y, 178f);
-            // 全网格碰撞：墙体/地板/门洞均为真实几何，MeshCollider 直接可用
-            // 玻璃半球和桁架除外——纯视觉，碰撞阻挡由气闸密封通道和压力环承担
+            // 全网格碰撞（含玻璃和桁架）：防护罩是实体屏障，通行只能走气闸的布尔切洞
             int colliders = 0;
             foreach (var mf in baseGo.GetComponentsInChildren<MeshFilter>())
             {
                 if (mf.GetComponent<MeshCollider>() == null && mf.sharedMesh != null)
                 {
-                    string n = mf.name;
-                    bool isGlass = n.Contains("Glass") || n.Contains("Lattice") ||
-                                   n.Contains("LinerStrip") || n.Contains("Dome_Ceil");
-                    if (!isGlass)
-                    {
-                        var mc = mf.gameObject.AddComponent<MeshCollider>();
-                        mc.sharedMesh = mf.sharedMesh;
-                        colliders++;
-                    }
+                    var mc = mf.gameObject.AddComponent<MeshCollider>();
+                    mc.sharedMesh = mf.sharedMesh;
+                    colliders++;
                 }
-            }
-            // 移除已存在的玻璃碰撞体（幂等）
-            foreach (var mc in baseGo.GetComponentsInChildren<MeshCollider>())
-            {
-                string n = mc.gameObject.name;
-                if (n.Contains("Glass") || n.Contains("Lattice") || n.Contains("LinerStrip"))
-                    UnityEngine.Object.DestroyImmediate(mc);
             }
             Report.AppendLine($"[基地] 自建参数化广寒站 ×2 放大（玻璃罩 r52/穹顶 r15/舱段 26m），网格碰撞 {colliders} 处");
 
