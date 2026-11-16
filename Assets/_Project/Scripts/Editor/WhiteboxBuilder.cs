@@ -330,17 +330,18 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             sd.autoRange = 9f;
             sd.prompt = "按 E 开门（靠近自动开启）";
 
-            // 出生点→穹顶门的引导路标（橙色短柱）
-            var postMat = LoadOrCreateMat("M_TrimOrange", new Color(0.85f, 0.45f, 0.16f));
+            // 出生点→气闸的引导地灯（发光圆盘贴地，科幻导航灯风格）
+            var lightMat = LoadOrCreateMat("M_PathLight", new Color(0.45f, 0.9f, 1f));
             for (int i = 0; i < 6; i++)
             {
-                var post = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                post.name = $"PathPost_{i}";
+                var disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                disc.name = $"PathLight_{i}";
                 float px = Mathf.Lerp(0f, 4f, i / 5f);
                 float pz = 114f + i * 4.5f;
-                post.transform.localScale = new Vector3(0.25f, 1.1f, 0.25f);
-                post.transform.position = new Vector3(px + 1.6f, ground(new Vector3(px, 0f, pz)) + 0.55f, pz);
-                post.GetComponent<Renderer>().sharedMaterial = postMat;
+                disc.transform.localScale = new Vector3(0.8f, 0.04f, 0.8f);
+                disc.transform.position = new Vector3(px, ground(new Vector3(px, 0f, pz)) + 0.05f, pz);
+                disc.GetComponent<Renderer>().sharedMaterial = lightMat;
+                UnityEngine.Object.DestroyImmediate(disc.GetComponent<CapsuleCollider>());
             }
 
 
