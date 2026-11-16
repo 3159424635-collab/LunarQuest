@@ -21,7 +21,7 @@ namespace LunarQuest.EditorTools
         const float HeightRange = 100f;
 
         // 地形要素使用世界坐标；地形对象置于 (-250,0,-250)，世界原点即地图中心
-        static readonly Vector2 CraterMain = new Vector2(80f, 140f);   // 3 号陨石坑（采样任务区）
+        static readonly Vector2 CraterMain = new Vector2(-80f, 140f);  // 3 号陨石坑（西侧，出车闸即达）
         const float CraterMainR = 30f, CraterMainD = 7f;
         static readonly Vector2 CraterB = new Vector2(-150f, -60f);
         const float CraterBR = 25f, CraterBD = 5f;
@@ -328,7 +328,7 @@ namespace LunarQuest.EditorTools
             {
                 var post = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 post.name = $"PathPost_{i}";
-                float px = Mathf.Lerp(0f, -12f, i / 5f);
+                float px = Mathf.Lerp(0f, 4f, i / 5f);
                 float pz = 114f + i * 4.5f;
                 post.transform.localScale = new Vector3(0.25f, 1.1f, 0.25f);
                 post.transform.position = new Vector3(px + 1.6f, ground(new Vector3(px, 0f, pz)) + 0.55f, pz);
@@ -430,10 +430,11 @@ namespace LunarQuest.EditorTools
 
             // 气闸门（玻璃罩半球防护体系：人行南闸双道门 + 车行东闸大门，均自动感应）
             var panelMat2 = LoadOrCreateMat("M_DoorPanel", new Color(0.80f, 0.45f, 0.15f));
-            void AutoDoor(string n, Vector3 pos, float w, float h, float thick, float xOff, float range, float spd)
+            void AutoDoor(string n, Vector3 pos, float w, float h, float thick, float xOff, float range, float spd, float yaw = 0f)
             {
                 var root = new GameObject(n);
                 root.transform.position = pos;
+                root.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
                 GameObject Pnl(string pn, float off)
                 {
                     var p = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -452,10 +453,10 @@ namespace LunarQuest.EditorTools
                 d.autoRange = range;
                 d.prompt = "气闸门（靠近自动开启）";
             }
-            AutoDoor("Airlock_S_Outer", new Vector3(-12f, by, 129.3f), 6.4f, 5.4f, 0.24f, 1.6f, 10f, 3f);
-            AutoDoor("Airlock_S_Inner", new Vector3(-12f, by, 138.7f), 6.4f, 5.4f, 0.24f, 1.6f, 10f, 3f);
-            AutoDoor("Airlock_E_Gate", new Vector3(50f, by, 190f), 11.2f, 9.2f, 0.5f, 2.8f, 14f, 2.2f);
-            Report.AppendLine("[基地] 玻璃半球防护罩+结构网格+压力环；南人气闸双道门+东车闸大门（均自动）");
+            AutoDoor("Airlock_S_Outer", new Vector3(4f, by, 129.3f), 6.4f, 5.4f, 0.24f, 1.6f, 10f, 3f);
+            AutoDoor("Airlock_S_Inner", new Vector3(4f, by, 138.7f), 6.4f, 5.4f, 0.24f, 1.6f, 10f, 3f);
+            AutoDoor("Airlock_W_Gate", new Vector3(-58f, by, 190f), 11.2f, 9.2f, 0.5f, 2.8f, 14f, 2.2f, 90f);
+            Report.AppendLine("[基地] 玻璃半球防护罩；南人气闸双道门(x=+4实测对位)+西车闸大门（glTF X轴实测镜像已补偿）");
         }
 
         // 基地原材质同为 Built-in 管线：按零件名映射到 URP 平色材质
@@ -880,7 +881,7 @@ namespace LunarQuest.EditorTools
             var mat = AssetDatabase.LoadAssetAtPath<Material>(MoonMatPath);
             Vector3[] pts =
             {
-                new Vector3(72f, 0f, 132f), new Vector3(88f, 0f, 148f), new Vector3(76f, 0f, 154f),
+                new Vector3(-72f, 0f, 132f), new Vector3(-88f, 0f, 148f), new Vector3(-76f, 0f, 154f),
             };
             string[] tags = { "A", "B", "C" };
             for (int i = 0; i < pts.Length; i++)
@@ -902,7 +903,7 @@ namespace LunarQuest.EditorTools
             var tcol = trig.AddComponent<BoxCollider>();
             tcol.isTrigger = true;
             tcol.size = new Vector3(56f, 16f, 56f);
-            trig.transform.position = new Vector3(80f, ground(new Vector3(80f, 0f, 140f)) + 6f, 140f);
+            trig.transform.position = new Vector3(-80f, ground(new Vector3(-80f, 0f, 140f)) + 6f, 140f);
             trig.AddComponent<AreaEvent>().eventName = "enter_crater03_sampling_area";
             Report.AppendLine("[采样] 3 号坑 3 勘测点 + 进入采样区触发器（任务事件接入）");
         }
@@ -916,7 +917,7 @@ namespace LunarQuest.EditorTools
             while (placed < 26 && tries < 200)
             {
                 tries++;
-                float x = 150f + (float)(rng.NextDouble() * 2 - 1) * 45f;
+                float x = -150f + (float)(rng.NextDouble() * 2 - 1) * 45f;
                 float z = -80f + (float)(rng.NextDouble() * 2 - 1) * 45f;
                 if (Dist(x, z, LandingFlat) < LandingFlatR + 8f) continue;
                 string variant = RockVariants[rng.Next(RockVariants.Length)];
@@ -963,12 +964,12 @@ namespace LunarQuest.EditorTools
         {
             RenderPreviewsAt("scene", new[]
             {
-                (new Vector3(-12f, 110f, 80f), new Vector3(-8f, 2f, 185f)),     // 基地鸟瞰
+                (new Vector3(-10f, 110f, 90f), new Vector3(0f, 2f, 185f)),      // 基地鸟瞰
                 (new Vector3(0f, 8f, 102f), new Vector3(-8f, 3f, 170f)),         // 出生点望向基地
                 (new Vector3(-4f, 2.6f, 160f), new Vector3(-4f, 2f, 172f)),      // 穹顶门外
                 (new Vector3(-4f, 3.4f, 167f), new Vector3(-4f, 2.4f, 180f)),    // 穹顶内部
-                (new Vector3(-12f, 6f, 118f), new Vector3(-12f, 2.6f, 136f)),    // 南气闸外观
-                (new Vector3(56f, 8f, 190f), new Vector3(46f, 4f, 190f)),        // 东车闸外观
+                (new Vector3(4f, 6f, 118f), new Vector3(4f, 2.6f, 136f)),        // 南气闸外观
+                (new Vector3(-70f, 8f, 190f), new Vector3(-56f, 4f, 190f)),      // 西车闸外观
             });
         }
 

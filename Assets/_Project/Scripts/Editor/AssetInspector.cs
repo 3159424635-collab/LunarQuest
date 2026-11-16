@@ -27,6 +27,78 @@ namespace LunarQuest.EditorTools
             Inspect("Assets/_Project/Art/Models/Sketchfab/SM_MoonBase_Custom.glb", "custombase");
         }
 
+        // 沿南气闸进入路径逐帧取证：出生点→外门→前室→内门→罩内
+        public static void RenderEntry()
+        {
+            var scene = EditorSceneManager.OpenScene(
+                "Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity", OpenSceneMode.Single);
+
+            // 坐标取证：基地根、全部自动门、玻璃罩包围盒
+            var sb = new StringBuilder();
+            foreach (var go in scene.GetRootGameObjects())
+            {
+                if (go.name == "MoonBase_Custom")
+                    sb.AppendLine($"MoonBase_Custom root: {go.transform.position} scale {go.transform.localScale}");
+                if (go.name.Contains("Airlock") || go.name == "DomeDoor")
+                {
+                    Bounds gb = default; bool first = true;
+                    foreach (var r in go.GetComponentsInChildren<Renderer>())
+                    {
+                        if (first) { gb = r.bounds; first = false; } else gb.Encapsulate(r.bounds);
+                    }
+                    sb.AppendLine($"{go.name}: root {go.transform.position} | 渲染范围 {gb}");
+                }
+            }
+            var glass = GameObject.Find("Glass_Hemisphere");
+            if (glass != null)
+            {
+                Bounds gb = default; bool first = true;
+                foreach (var r in glass.GetComponentsInChildren<Renderer>())
+                {
+                    if (first) { gb = r.bounds; first = false; } else gb.Encapsulate(r.bounds);
+                }
+                sb.AppendLine($"Glass_Hemisphere: pos {glass.transform.position} | 范围 {gb}");
+            }
+            var south = GameObject.Find("AirS_Roof");
+            if (south != null) sb.AppendLine($"南气闸前室(AirS_Roof): {south.transform.position}");
+            var east = GameObject.Find("AirE_Roof");
+            if (east != null) sb.AppendLine($"东车闸(AirE_Roof): {east.transform.position}");
+            File.WriteAllText("Logs/entry_positions.txt", sb.ToString());
+            Debug.Log("[取证] " + sb.ToString());
+
+            var rt = new RenderTexture(1280, 720, 24);
+            var camGo = new GameObject("Walk");
+            var cam = camGo.AddComponent<Camera>();
+            cam.nearClipPlane = 0.05f;
+            cam.farClipPlane = 3000f;
+            cam.fieldOfView = 70f;
+            cam.targetTexture = rt;
+            (Vector3 pos, Vector3 look, string tag)[] views =
+            {
+                (new Vector3(-12f, 1.7f, 124f), new Vector3(-12f, 1.9f, 134f), "entry_0"),
+                (new Vector3(-12f, 1.7f, 131f), new Vector3(-12f, 1.9f, 141f), "entry_1"),
+                (new Vector3(-12f, 1.7f, 136f), new Vector3(-12f, 1.9f, 146f), "entry_2"),
+                (new Vector3(-12f, 1.7f, 142f), new Vector3(-12f, 1.9f, 152f), "entry_3"),
+                (new Vector3(-12f, 1.7f, 148f), new Vector3(-6f, 2.2f, 158f), "entry_4"),
+            };
+            foreach (var v in views)
+            {
+                cam.transform.position = v.pos;
+                cam.transform.LookAt(v.look);
+                cam.Render();
+                RenderTexture.active = rt;
+                var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
+                tex.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
+                tex.Apply();
+                File.WriteAllBytes($"Logs/{v.tag}.png", tex.EncodeToPNG());
+                Object.DestroyImmediate(tex);
+            }
+            cam.targetTexture = null;
+            rt.Release();
+            Object.DestroyImmediate(camGo);
+            Debug.Log("[AssetInspector] 进入路径取证完成 Logs/entry_*.png");
+        }
+
         // 不重建、只打开当前磁盘上的 S4 场景并渲染三张预览（现场取证用）
         public static void RenderS4()
         {
