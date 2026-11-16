@@ -30,13 +30,13 @@ namespace LunarQuest
 
             // 准星：中心小点
             var cross = NewRect("Crosshair", canvas.transform, new Vector2(0.5f, 0.5f), Vector2.zero);
-            cross.sizeDelta = new Vector2(5f, 5f);
+            cross.sizeDelta = new Vector2(7f, 7f);
             var crossImg = cross.gameObject.AddComponent<Image>();
             crossImg.sprite = MakeDot();
             crossImg.color = new Color(1f, 1f, 1f, 0.7f);
 
             // 提示根：准星下方 70px
-            var root = NewRect("Prompt", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, -70f));
+            var root = NewRect("Prompt", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, -110f));
             group = root.gameObject.AddComponent<CanvasGroup>();
             group.blocksRaycasts = false;
             group.interactable = false;
@@ -44,24 +44,24 @@ namespace LunarQuest
 
             // 按键徽章（圆角描边小方块）
             var badgeRect = NewRect("KeyBadge", root, new Vector2(1f, 0.5f), new Vector2(-10f, 0f));
-            badgeRect.sizeDelta = new Vector2(44f, 44f);
+            badgeRect.sizeDelta = new Vector2(72f, 72f);
             badge = badgeRect.gameObject.AddComponent<Image>();
             badge.sprite = MakeChip();
             badge.rectTransform.pivot = new Vector2(1f, 0.5f);
             var bt = NewRect("KeyText", badgeRect, new Vector2(0.5f, 0.5f), Vector2.zero);
             badgeText = bt.gameObject.AddComponent<Text>();
-            SetupText(badgeText, 22, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
-            bt.sizeDelta = new Vector2(44f, 44f);
+            SetupText(badgeText, 38, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            bt.sizeDelta = new Vector2(72f, 72f);
 
             // 动作文本（徽章右侧）
             var labelRect = NewRect("Label", root, new Vector2(0f, 0.5f), new Vector2(10f, 0f));
-            labelRect.sizeDelta = new Vector2(560f, 44f);
+            labelRect.sizeDelta = new Vector2(720f, 56f);
             labelRect.pivot = new Vector2(0f, 0.5f);
             label = labelRect.gameObject.AddComponent<Text>();
-            SetupText(label, 21, FontStyle.Normal, new Color(0.87f, 0.98f, 1f), TextAnchor.MiddleLeft);
+            SetupText(label, 30, FontStyle.Normal, new Color(0.87f, 0.98f, 1f), TextAnchor.MiddleLeft);
             var outline = labelRect.gameObject.AddComponent<Outline>();
             outline.effectColor = new Color(0f, 0.05f, 0.1f, 0.9f);
-            outline.effectDistance = new Vector2(1.5f, -1.5f);
+            outline.effectDistance = new Vector2(2f, -2f);
         }
 
         void Start()
@@ -120,6 +120,7 @@ namespace LunarQuest
             t.horizontalOverflow = HorizontalWrapMode.Overflow;
             t.verticalOverflow = VerticalWrapMode.Overflow;
             t.supportRichText = false;
+            t.resizeTextForBestFit = false;
         }
 
         static Font GetFont()
@@ -143,7 +144,7 @@ namespace LunarQuest
 
         static Sprite MakeChip()
         {
-            const int S = 64, R = 14, B = 3;
+            const int S = 128, R = 28, B = 4;
             var tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
             var fill = new Color(0.02f, 0.06f, 0.1f, 0.72f);
             var edge = new Color(0.62f, 0.95f, 1f, 0.95f);
