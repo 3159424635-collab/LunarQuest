@@ -407,6 +407,21 @@ namespace LunarQuest.EditorTools
                 }
             }
             Report.AppendLine($"[基地] 自建参数化广寒站（穹顶+双舱段+走廊，73 构件，米制）落位 (-4,178)，网格碰撞 {colliders} 处");
+
+            // 穹顶内景：成品科幻家具（控制台/椅子）+ 内部光源
+            float by = ground(new Vector3(-4f, 0f, 178f));
+            PlaceStation("computer-wide", 2.6f, new Vector3(-8.5f, 0f, 174.5f), ground, "DomeConsole_1", true, new Vector3(0f, 45f, 0f));
+            PlaceStation("computer-wide", 2.6f, new Vector3(4.5f, 0f, 173f), ground, "DomeConsole_2", true, new Vector3(0f, 135f, 0f));
+            PlaceStation("computer-wide", 2.6f, new Vector3(8f, 0f, 181f), ground, "DomeConsole_3", true, new Vector3(0f, 225f, 0f));
+            PlaceStation("chair", 1.0f, new Vector3(-7.2f, 0f, 173.2f), ground, "DomeChair_1", false, new Vector3(0f, 45f, 0f));
+            PlaceStation("chair", 1.0f, new Vector3(3.4f, 0f, 171.8f), ground, "DomeChair_2", false, new Vector3(0f, 135f, 0f));
+            var domeLight = new GameObject("DomeInteriorLight").AddComponent<Light>();
+            domeLight.type = LightType.Point;
+            domeLight.intensity = 1.3f;
+            domeLight.range = 15f;
+            domeLight.color = new Color(1f, 0.97f, 0.9f);
+            domeLight.transform.position = new Vector3(-4f, by + 4.6f, 178f);
+            Report.AppendLine("[基地] 穹顶内景：控制台×3+椅子×2（Kenney 成品件）+ 暖光点光源");
         }
 
         // 基地原材质同为 Built-in 管线：按零件名映射到 URP 平色材质
@@ -904,9 +919,10 @@ namespace LunarQuest.EditorTools
         {
             RenderPreviewsAt("scene", new[]
             {
-                (new Vector3(-4f, 55f, 120f), new Vector3(-4f, 2f, 172f)),   // 基地鸟瞰
-                (new Vector3(0f, 8f, 140f), new Vector3(-4f, 3f, 170f)),     // 出生点望向基地
-                (new Vector3(-4f, 2.2f, 153.5f), new Vector3(-4f, 1.2f, 162f)), // 展览舱内部
+                (new Vector3(-4f, 55f, 120f), new Vector3(-4f, 2f, 172f)),       // 基地鸟瞰
+                (new Vector3(0f, 8f, 140f), new Vector3(-4f, 3f, 170f)),         // 出生点望向基地
+                (new Vector3(-4f, 2.2f, 148f), new Vector3(-4f, 1.5f, 162f)),    // 展览舱门口
+                (new Vector3(-4f, 3.4f, 173.5f), new Vector3(-4f, 2.4f, 179.5f)),// 穹顶内部
             });
         }
 
