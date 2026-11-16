@@ -168,12 +168,12 @@ namespace LunarQuest.EditorTools
             float Ground(Vector3 p) => terrain.SampleHeight(p) + terrain.transform.position.y;
 
             var player = BuildPlayer(new Vector3(0f, 0f, 150f), Ground);
-            BuildRover(new Vector3(24f, 0f, 156f), Ground, player.transform);
+            BuildRover(new Vector3(10f, 0f, 168f), Ground, player.transform);
             BuildKenneyBase(Ground);
             BuildExhibitHall(Ground);
             PlaceNpc("base_coordinator", "周航_协调员", new Vector3(2f, 0f, 171f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
             PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(-9f, 0f, 162f), Ground, "样本先放我这里，参观完科普厅再走。");
-            PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(18f, 0f, 150f), Ground, "车就在外面，月面路滑，慢点开。");
+            PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(14f, 0f, 166f), Ground, "车就在外面，月面路滑，慢点开。");
             BuildSampleRocks(Ground);
             BuildRockField(Ground);
             BuildMinimap(player.transform);
@@ -306,7 +306,32 @@ namespace LunarQuest.EditorTools
             var sd = doorRoot.AddComponent<SlidingDoor>();
             sd.panelL = pl.transform;
             sd.panelR = pr.transform;
-            sd.prompt = "按 E 开门";
+            sd.autoRange = 4.5f;
+            sd.prompt = "按 E 开门（靠近自动开启）";
+
+            // 气闸大门：玻璃罩南口 6m 自动感应双扇
+            var gateRoot = new GameObject("AirlockGate");
+            gateRoot.transform.position = new Vector3(-7.7f, y0, 154.0f);
+            GameObject GatePanel(string n, float xOff)
+            {
+                var p = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                p.name = n;
+                p.transform.SetParent(gateRoot.transform, false);
+                p.transform.localPosition = new Vector3(xOff, 2.1f, 0f);
+                p.transform.localScale = new Vector3(3.1f, 4.2f, 0.3f);
+                p.GetComponent<Renderer>().sharedMaterial = panelMat;
+                return p;
+            }
+            var gl = GatePanel("GateL", -1.6f);
+            var gr = GatePanel("GateR", 1.6f);
+            var gate = gateRoot.AddComponent<SlidingDoor>();
+            gate.panelL = gl.transform;
+            gate.panelR = gr.transform;
+            gate.openOffset = 3.0f;
+            gate.speed = 1.6f;
+            gate.autoRange = 8f;
+            gate.prompt = "气闸门（靠近自动开启）";
+
 
             // 展台 ×3 环绕全息台（避开南门/西走廊/北走廊三个方向）
             PlaceStand(0, new Vector3(-1f, 0f, 181.5f), y0,
@@ -627,6 +652,7 @@ namespace LunarQuest.EditorTools
             camGo.transform.SetParent(rover.transform, false);
             var cam = camGo.AddComponent<Camera>();
             cam.enabled = false;
+            camGo.tag = "MainCamera";
             var rc = camGo.AddComponent<RoverCamera>();
             rc.target = rover.transform;
 
@@ -900,6 +926,8 @@ namespace LunarQuest.EditorTools
                 (new Vector3(0f, 8f, 140f), new Vector3(-4f, 3f, 170f)),         // 出生点望向基地
                 (new Vector3(-4f, 2.2f, 148f), new Vector3(-4f, 1.5f, 162f)),    // 展览舱门口
                 (new Vector3(-4f, 3.4f, 173.5f), new Vector3(-4f, 2.4f, 179.5f)),// 穹顶内部
+                (new Vector3(-4f, 2.6f, 168.5f), new Vector3(-4f, 2.4f, 176f)),  // 穿南门看大厅
+                (new Vector3(-7.7f, 6f, 146.5f), new Vector3(-7.7f, 3f, 158f)),  // 气闸门外望罩内
             });
         }
 
