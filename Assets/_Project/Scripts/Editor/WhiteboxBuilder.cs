@@ -168,8 +168,8 @@ namespace LunarQuest.EditorTools
             var player = BuildPlayer(new Vector3(0f, 0f, 150f), Ground);
             BuildRover(new Vector3(24f, 0f, 156f), Ground, player.transform);
             BuildKenneyBase(Ground);
-            PlaceModel(ModelDir + "/毅力号.fbx", 2.7f, new Vector3(14f, 0f, 150f), Ground, "Exhibit_Perseverance", false, false);
-            PlaceNpc("base_coordinator", "周航_协调员", new Vector3(2f, 0f, 158f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
+            BuildExhibitHall(Ground);
+            PlaceNpc("base_coordinator", "周航_协调员", new Vector3(2f, 0f, 171f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
             PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(-9f, 0f, 162f), Ground, "样本先放我这里，参观完科普厅再走。");
             PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(18f, 0f, 150f), Ground, "车就在外面，月面路滑，慢点开。");
             BuildSampleRocks(Ground);
@@ -253,6 +253,90 @@ namespace LunarQuest.EditorTools
         }
 
         const string KenneyDir = "Assets/Kenney Assets/Space Kit/Models";
+        const string StationDir = "Assets/Kenney Assets/Space Station Kit/Models/FBX format";
+
+        static GameObject PlaceStation(string model, float targetMax, Vector3 pos,
+            Func<Vector3, float> ground, string name, bool addCollider, Vector3? rotEuler = null)
+        {
+            return PlaceModel($"{StationDir}/{model}.fbx", targetMax, pos, ground, name, addCollider, false, rotEuler);
+        }
+
+        // 展览舱（AR 展品区）：16×12m 可进入舱段，地板/墙面/窗/门/天花板 + 展台 + 中央展品 + 室内灯光
+        static void BuildExhibitHall(Func<Vector3, float> ground)
+        {
+            const float cx = -4f, cz = 158f;          // 舱中心
+            float baseY = ground(new Vector3(cx, 0f, cz));
+
+            // 地板与天花板：4×3 格 4m 板
+            float[] xs = { -10f, -6f, -2f, 2f };
+            float[] zs = { cz - 4f, cz, cz + 4f };
+            foreach (float x in xs)
+                foreach (float z in zs)
+                {
+                    PlaceStation("floor-panel-straight", 4f, new Vector3(x, 0f, z), ground,
+                        $"HallFloor_{x}_{z}", true, null);
+                    var ceil = PlaceStation("floor-panel-straight", 4f, new Vector3(x, 0f, z), ground,
+                        $"HallCeil_{x}_{z}", false, new Vector3(180f, 0f, 0f));
+                    if (ceil != null) ceil.transform.position += Vector3.up * 3.2f;
+                }
+
+            // 南墙（入口）：门居中两侧墙
+            PlaceStation("wall-door", 4f, new Vector3(cx, 0f, cz - 6f), ground, "HallWall_S_Door", true, null);
+            PlaceStation("wall", 4f, new Vector3(cx - 8f, 0f, cz - 6f), ground, "HallWall_S_L", true, null);
+            PlaceStation("wall", 4f, new Vector3(cx - 4f, 0f, cz - 6f), ground, "HallWall_S_L2", true, null);
+            PlaceStation("wall", 4f, new Vector3(cx + 4f, 0f, cz - 6f), ground, "HallWall_S_R", true, null);
+            PlaceStation("wall", 4f, new Vector3(cx + 8f, 0f, cz - 6f), ground, "HallWall_S_R2", true, null);
+            // 北墙：带窗
+            PlaceStation("wall", 4f, new Vector3(cx - 8f, 0f, cz + 6f), ground, "HallWall_N1", true, null);
+            PlaceStation("wall-window", 4f, new Vector3(cx - 4f, 0f, cz + 6f), ground, "HallWall_N_Win1", true, null);
+            PlaceStation("wall", 4f, new Vector3(cx, 0f, cz + 6f), ground, "HallWall_N2", true, null);
+            PlaceStation("wall-window", 4f, new Vector3(cx + 4f, 0f, cz + 6f), ground, "HallWall_N_Win2", true, null);
+            PlaceStation("wall", 4f, new Vector3(cx + 8f, 0f, cz + 6f), ground, "HallWall_N3", true, null);
+            // 东西墙
+            for (int i = 0; i < 3; i++)
+            {
+                float z = zs[i];
+                string wn = i == 1 ? "wall-window" : "wall";
+                PlaceStation(wn, 4f, new Vector3(cx + 12f, 0f, z), ground, $"HallWall_E_{i}", true, new Vector3(0f, 90f, 0f));
+                PlaceStation(wn, 4f, new Vector3(cx - 12f, 0f, z), ground, $"HallWall_W_{i}", true, new Vector3(0f, 90f, 0f));
+            }
+
+            // 展台 ×3 + 台上微缩飞船
+            (float x, float z)[] tables = { (cx - 5f, cz - 1.5f), (cx + 5f, cz - 1.5f), (cx, cz + 3f) };
+            for (int i = 0; i < tables.Length; i++)
+            {
+                var t = PlaceStation("table-display", 1.9f, new Vector3(tables[i].x, 0f, tables[i].z),
+                    ground, $"ExhibitTable_{i}", true, new Vector3(0f, 90f * i, 0f));
+                float topY = baseY + 1.05f;
+                string ship = i == 0 ? "spaceCraft1" : i == 1 ? "spaceCraft2" : "spaceCraft5";
+                var s = PlaceKenney(ship, 1.3f, new Vector3(tables[i].x, 0f, tables[i].z),
+                    _ => topY, $"Exhibit_Item_{i}", false, new Vector3(0f, 45f * i, 0f));
+            }
+
+            // 中央展品：毅力号放在基座上
+            var pedestal = PlaceStation("container-flat", 2.2f, new Vector3(cx, 0f, cz - 2.5f),
+                ground, "Exhibit_Pedestal", true, null);
+            PlaceModel(ModelDir + "/毅力号.fbx", 2.7f, new Vector3(cx, 0f, cz - 2.5f),
+                _ => baseY + 1.05f, "Exhibit_Perseverance", false, false);
+
+            // 靠墙控制台与展示墙
+            PlaceStation("computer-wide", 2.6f, new Vector3(cx - 8f, 0f, cz + 4.5f), ground, "HallConsole_A", true, new Vector3(0f, 180f, 0f));
+            PlaceStation("computer-wide", 2.6f, new Vector3(cx + 8f, 0f, cz + 4.5f), ground, "HallConsole_B", true, new Vector3(0f, 180f, 0f));
+            PlaceStation("display-wall", 4f, new Vector3(cx - 4f, 0f, cz + 5.4f), ground, "HallDisplayWall", false, new Vector3(0f, 180f, 0f));
+
+            // 室内灯光
+            (float, float)[] lightSpots = { (cx - 7f, cz - 2f), (cx + 7f, cz - 2f), (cx - 7f, cz + 3f), (cx + 7f, cz + 3f) };
+            foreach (var (lx, lz) in lightSpots)
+            {
+                var l = new GameObject("HallLight").AddComponent<Light>();
+                l.type = LightType.Point;
+                l.intensity = 1.1f;
+                l.range = 9f;
+                l.color = new Color(1f, 0.96f, 0.88f);
+                l.transform.position = new Vector3(lx, baseY + 2.8f, lz);
+            }
+            Report.AppendLine("[展览舱] 16×12m 可进入舱段：门/窗墙/天花板 + 3 展台 + 毅力号中央展品 + 控制台 + 展示墙 + 4 点光源");
+        }
 
         // 广寒站：原月球基地 FBX（穹顶+三舱段+走廊+天线结构完整）配色修复后作为主体，
         // 辅以 Kenney 地标塔与展览区
@@ -261,23 +345,7 @@ namespace LunarQuest.EditorTools
             var baseGo = PlaceModel(ModelDir + "/月球基地.fbx", 46f, new Vector3(-4f, 0f, 178f), ground, "MoonBase", true, true);
             RecolorByPartName(baseGo);
             PlaceKenneyHeight("station", 12f, new Vector3(-4f, 0f, 184f), ground, "Base_Landmark", false);
-
-            // 展览区（AR 展品占位）：围栏 + 两艘微缩飞船
-            for (int i = 0; i < 4; i++)
-            {
-                var rot = new Vector3(0f, i * 90f, 0f);
-                Vector3 pos = i switch
-                {
-                    0 => new Vector3(-4f, 0f, 158f),
-                    1 => new Vector3(6f, 0f, 168f),
-                    2 => new Vector3(-4f, 0f, 178f - 0.1f),
-                    _ => new Vector3(-14f, 0f, 168f),
-                };
-                PlaceKenney("metalFence", 10f, pos, ground, "Exhibit_Fence_" + i, false, rot);
-            }
-            PlaceKenney("spaceCraft1", 2.2f, new Vector3(-7f, 0f, 168f), ground, "Exhibit_Ship1", false, null);
-            PlaceKenney("spaceCraft2", 2.2f, new Vector3(-1f, 0f, 168f), ground, "Exhibit_Ship2", false, null);
-            Report.AppendLine("[基地] 穹顶主基地（配色修复）+ 地标塔 + 展览区围栏与两件微缩展品占位");
+            Report.AppendLine("[基地] 穹顶主基地（配色修复）+ 地标塔；展览区移入独立展览舱");
         }
 
         // 基地原材质同为 Built-in 管线：按零件名映射到 URP 平色材质
@@ -774,7 +842,8 @@ namespace LunarQuest.EditorTools
             RenderPreviewsAt("scene", new[]
             {
                 (new Vector3(-4f, 55f, 120f), new Vector3(-4f, 2f, 172f)),   // 基地鸟瞰
-                (new Vector3(0f, 8f, 148f), new Vector3(-4f, 3f, 178f)),     // 出生点望向基地
+                (new Vector3(0f, 8f, 140f), new Vector3(-4f, 3f, 170f)),     // 出生点望向基地
+                (new Vector3(-4f, 2.2f, 153.5f), new Vector3(-4f, 1.2f, 162f)), // 展览舱内部
             });
         }
 
