@@ -316,27 +316,39 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 var p = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 p.name = n;
                 p.transform.SetParent(doorRoot.transform, false);
-                p.transform.localPosition = new Vector3(xOff, 2.6f, 0f);
-                p.transform.localScale = new Vector3(3.2f, 5.4f, 0.28f);
+                p.transform.localPosition = new Vector3(xOff, 2.7f, 0f);
+                p.transform.localScale = new Vector3(3.6f, 5.6f, 0.3f);
                 p.GetComponent<Renderer>().sharedMaterial = panelMat;
                 return p;
             }
-            var pl = Panel("PanelL", -1.6f);
-            var pr = Panel("PanelR", 1.6f);
+            var pl = Panel("PanelL", -1.8f);
+            var pr = Panel("PanelR", 1.8f);
             var sd = doorRoot.AddComponent<SlidingDoor>();
             sd.panelL = pl.transform;
             sd.panelR = pr.transform;
-            sd.openOffset = 3.3f;
+            sd.openOffset = 3.7f;
             sd.autoRange = 9f;
             sd.prompt = "按 E 开门（靠近自动开启）";
-            // 门楣封住门洞上方缺口
+            // 门楣 + 两侧门框（封住弧形墙与平面门之间的缝隙）
+            var frameMat = LoadOrCreateMat("M_DoorFrame", new Color(0.16f, 0.18f, 0.22f));
             var lintel = GameObject.CreatePrimitive(PrimitiveType.Cube);
             lintel.name = "DomeDoorLintel";
             lintel.transform.SetParent(doorRoot.transform, false);
-            lintel.transform.localPosition = new Vector3(0f, 5.5f, 0f);
-            lintel.transform.localScale = new Vector3(7f, 1.2f, 0.4f);
-            lintel.GetComponent<Renderer>().sharedMaterial = panelMat;
+            lintel.transform.localPosition = new Vector3(0f, 5.7f, 0f);
+            lintel.transform.localScale = new Vector3(7.6f, 1.4f, 0.5f);
+            lintel.GetComponent<Renderer>().sharedMaterial = frameMat;
             UnityEngine.Object.DestroyImmediate(lintel.GetComponent<BoxCollider>());
+            for (int di = 0; di < 2; di++)
+            {
+                float dx = di == 0 ? -3.5f : 3.5f;
+                var jamb = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                jamb.name = $"DomeDoorJamb_{di}";
+                jamb.transform.SetParent(doorRoot.transform, false);
+                jamb.transform.localPosition = new Vector3(dx, 2.7f, 0f);
+                jamb.transform.localScale = new Vector3(0.6f, 5.6f, 0.5f);
+                jamb.GetComponent<Renderer>().sharedMaterial = frameMat;
+                UnityEngine.Object.DestroyImmediate(jamb.GetComponent<BoxCollider>());
+            }
 
             // 出生点→气闸的引导地灯（发光圆盘贴地，科幻导航灯风格）
             var lightMat = LoadOrCreateMat("M_PathLight", new Color(0.45f, 0.9f, 1f));
@@ -413,15 +425,29 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             Bounds b = LocalBounds(baseGo.transform);
             baseGo.transform.position = new Vector3(-4f, ground(new Vector3(-4f, 0f, 178f)) - b.min.y, 178f);
             // 全网格碰撞：墙体/地板/门洞均为真实几何，MeshCollider 直接可用
+            // 玻璃半球和桁架除外——纯视觉，碰撞阻挡由气闸密封通道和压力环承担
             int colliders = 0;
             foreach (var mf in baseGo.GetComponentsInChildren<MeshFilter>())
             {
                 if (mf.GetComponent<MeshCollider>() == null && mf.sharedMesh != null)
                 {
-                    var mc = mf.gameObject.AddComponent<MeshCollider>();
-                    mc.sharedMesh = mf.sharedMesh;
-                    colliders++;
+                    string n = mf.name;
+                    bool isGlass = n.Contains("Glass") || n.Contains("Lattice") ||
+                                   n.Contains("LinerStrip") || n.Contains("Dome_Ceil");
+                    if (!isGlass)
+                    {
+                        var mc = mf.gameObject.AddComponent<MeshCollider>();
+                        mc.sharedMesh = mf.sharedMesh;
+                        colliders++;
+                    }
                 }
+            }
+            // 移除已存在的玻璃碰撞体（幂等）
+            foreach (var mc in baseGo.GetComponentsInChildren<MeshCollider>())
+            {
+                string n = mc.gameObject.name;
+                if (n.Contains("Glass") || n.Contains("Lattice") || n.Contains("LinerStrip"))
+                    UnityEngine.Object.DestroyImmediate(mc);
             }
             Report.AppendLine($"[基地] 自建参数化广寒站 ×2 放大（玻璃罩 r52/穹顶 r15/舱段 26m），网格碰撞 {colliders} 处");
 
