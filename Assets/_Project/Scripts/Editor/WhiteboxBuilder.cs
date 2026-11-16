@@ -280,81 +280,52 @@ namespace LunarQuest.EditorTools
             return pm;
         }
 
-        // 展览舱：指挥中心内景（99.1 万面，CC-BY）经 Blender 切出南门洞的版本。
-        // 碰撞/门/展台均为世界坐标独立物体（舱体根节点带缩放，子级会被放大，不可挂）。
+        // 展览区并入穹顶大厅：滑动门装在穹顶南门，展台环绕全息台。
+        // （原绿色指挥室内景已整体拆除——昏暗拥挤，观感不合格）
         static void BuildExhibitHall(Func<Vector3, float> ground)
         {
-            const float cx = -4f, cz = 158f;
+            const float cx = -4f, cz = 178f;      // 穹顶中心
             float y0 = ground(new Vector3(cx, 0f, cz));
-            var hall = PlaceModel("Assets/_Project/Art/Models/Sketchfab/command_center_interior/SM_Hall_Ext.glb",
-                22f, new Vector3(cx, 0f, cz), ground, "ExhibitHall", false, false);
-            if (hall == null) return;
 
-            var solid = new Vector3(22.5f, 4.2f, 21f);
-            void Slab(string n, Vector3 c, Vector3 s)
-            {
-                var g = new GameObject(n);
-                g.transform.SetParent(hall.transform.parent == null ? null : hall.transform.parent, false);
-                g.transform.position = new Vector3(cx, y0, cz) + c;
-                var col = g.AddComponent<BoxCollider>();
-                col.size = s;
-            }
-            Slab("Col_Floor", new Vector3(0f, 0.05f, 0f), new Vector3(solid.x, 0.3f, solid.z));
-            Slab("Col_Ceil", new Vector3(0f, 3.95f, 0f), new Vector3(solid.x, 0.3f, solid.z));
-            Slab("Col_N", new Vector3(0f, 2.1f, solid.z * 0.5f), new Vector3(solid.x, 4.4f, 0.6f));
-            Slab("Col_E", new Vector3(solid.x * 0.5f, 2.1f, 0f), new Vector3(0.6f, 4.4f, solid.z));
-            Slab("Col_W", new Vector3(-solid.x * 0.5f, 2.1f, 0f), new Vector3(0.6f, 4.4f, solid.z));
-            Slab("Col_S_L", new Vector3(-6.5f, 2.1f, -solid.z * 0.5f), new Vector3(10f, 4.4f, 0.6f));
-            Slab("Col_S_R", new Vector3(6.5f, 2.1f, -solid.z * 0.5f), new Vector3(10f, 4.4f, 0.6f));
-            Slab("Col_S_Top", new Vector3(0f, 3.3f, -solid.z * 0.5f), new Vector3(3f, 1.9f, 0.6f));
-
-            // 滑动门（E 开关）：双扇 + 门楣
+            // 滑动门：穹顶南门洞（z = cz-7.5）
             var panelMat = LoadOrCreateMat("M_DoorPanel", new Color(0.80f, 0.45f, 0.15f));
-            var frameMat = LoadOrCreateMat("M_DoorFrame", new Color(0.16f, 0.18f, 0.22f));
-            var doorRoot = new GameObject("HallDoor");
-            doorRoot.transform.position = new Vector3(cx, y0, cz - solid.z * 0.5f + 0.12f);
+            var doorRoot = new GameObject("DomeDoor");
+            doorRoot.transform.position = new Vector3(cx, y0, cz - 7.35f);
             GameObject Panel(string n, float xOff)
             {
                 var p = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 p.name = n;
                 p.transform.SetParent(doorRoot.transform, false);
-                p.transform.localPosition = new Vector3(xOff, 1.15f, 0f);
-                p.transform.localScale = new Vector3(1.45f, 2.3f, 0.14f);
+                p.transform.localPosition = new Vector3(xOff, 1.3f, 0f);
+                p.transform.localScale = new Vector3(1.45f, 2.6f, 0.14f);
                 p.GetComponent<Renderer>().sharedMaterial = panelMat;
                 return p;
             }
             var pl = Panel("PanelL", -0.75f);
             var pr = Panel("PanelR", 0.75f);
-            var header = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            header.name = "Header";
-            header.transform.SetParent(doorRoot.transform, false);
-            header.transform.localPosition = new Vector3(0f, 2.5f, 0f);
-            header.transform.localScale = new Vector3(3.2f, 0.35f, 0.22f);
-            header.GetComponent<Renderer>().sharedMaterial = frameMat;
-            UnityEngine.Object.DestroyImmediate(header.GetComponent<BoxCollider>());
             var sd = doorRoot.AddComponent<SlidingDoor>();
             sd.panelL = pl.transform;
             sd.panelR = pr.transform;
             sd.prompt = "按 E 开门";
 
-            // 展台 ×3：台座 + 微缩展品 + 二维码屏占位 + 数据卡交互
-            PlaceStand(0, new Vector3(-11f, 0f, 152.5f), y0,
+            // 展台 ×3 环绕全息台（避开南门/西走廊/北走廊三个方向）
+            PlaceStand(0, new Vector3(-1f, 0f, 181.5f), y0,
                 "阿波罗月球车（LRV）",
                 "1971–1972 年阿波罗 15/16/17 号任务使用，电池驱动四轮月面车，" +
                 "月面最高时速约 18 公里，三台车累计行驶约 90 公里。",
                 ModelDir + "/SM_Rover_Apollo.glb", 1.7f);
-            PlaceStand(1, new Vector3(-4f, 0f, 153.5f), y0,
+            PlaceStand(1, new Vector3(-1f, 0f, 174.8f), y0,
                 "玉兔二号月球车（占位模型）",
                 "嫦娥四号任务 2019 年实现人类首次月球背面软着陆巡视，" +
                 "玉兔二号设计寿命 3 个月，实际工作超过 5 年。",
                 KenneyDir + "/spaceCraft1.fbx", 1.3f);
-            PlaceStand(2, new Vector3(3f, 0f, 152.5f), y0,
+            PlaceStand(2, new Vector3(-8.4f, 0f, 180.2f), y0,
                 "嫦娥五号返回舱（占位模型）",
                 "2020 年嫦娥五号完成我国首次地外天体采样返回，" +
                 "带回月壤样品 1731 克，本作 HUD 数据卡同款数字。",
                 KenneyDir + "/spaceCraft5.fbx", 1.3f);
 
-            Report.AppendLine("[展览舱] 指挥中心内景+滑动门(E)+3 展台(E 数据卡/二维码屏占位)；碰撞为世界坐标拼装");
+            Report.AppendLine("[展览区] 并入穹顶大厅：南门滑动门 + 展台×3 环绕全息台；绿色指挥室内景已拆除");
         }
 
         static void PlaceStand(int i, Vector3 pos, float baseY, string title, string desc,
@@ -417,10 +388,16 @@ namespace LunarQuest.EditorTools
             PlaceStation("chair", 1.0f, new Vector3(3.4f, 0f, 171.8f), ground, "DomeChair_2", false, new Vector3(0f, 135f, 0f));
             var domeLight = new GameObject("DomeInteriorLight").AddComponent<Light>();
             domeLight.type = LightType.Point;
-            domeLight.intensity = 1.3f;
-            domeLight.range = 15f;
-            domeLight.color = new Color(1f, 0.97f, 0.9f);
-            domeLight.transform.position = new Vector3(-4f, by + 4.6f, 178f);
+            domeLight.intensity = 2.6f;
+            domeLight.range = 18f;
+            domeLight.color = new Color(1f, 0.98f, 0.92f);
+            domeLight.transform.position = new Vector3(-4f, by + 4.9f, 178f);
+            var domeLight2 = new GameObject("DomeInteriorLight2").AddComponent<Light>();
+            domeLight2.type = LightType.Point;
+            domeLight2.intensity = 1.4f;
+            domeLight2.range = 12f;
+            domeLight2.color = new Color(0.95f, 0.97f, 1f);
+            domeLight2.transform.position = new Vector3(-4f, by + 2.2f, 178f);
             Report.AppendLine("[基地] 穹顶内景：控制台×3+椅子×2（Kenney 成品件）+ 暖光点光源");
         }
 
