@@ -462,9 +462,23 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 d.autoRange = range;
                 d.prompt = "气闸门（靠近自动开启）";
             }
-            AutoDoor("Airlock_S_Outer", new Vector3(4f, by, 129.3f), 6.4f, 5.4f, 0.24f, 1.6f, 10f, 3f);
-            AutoDoor("Airlock_S_Inner", new Vector3(4f, by, 138.7f), 6.4f, 5.4f, 0.24f, 1.6f, 10f, 3f);
-            AutoDoor("Airlock_W_Gate", new Vector3(-58f, by, 190f), 11.2f, 9.2f, 0.5f, 2.8f, 14f, 2.2f, 90f);
+            AutoDoor("Airlock_S_Outer", new Vector3(4f, by, 129.3f), 13.2f, 5.4f, 0.24f, 3.3f, 10f, 3f);
+            AutoDoor("Airlock_S_Inner", new Vector3(4f, by, 138.7f), 13.2f, 5.4f, 0.24f, 3.3f, 10f, 3f);
+            // 两道门之间的密封连接通道（替代 GLB 气闸，完全密封无漏缝）
+            var tunnelMat = LoadOrCreateMat("M_HullWhite", new Color(0.82f, 0.83f, 0.86f));
+            void Tunnel(string n, Vector3 c, Vector3 s)
+            {
+                var t = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                t.name = n;
+                t.transform.position = c;
+                t.transform.localScale = s;
+                t.GetComponent<Renderer>().sharedMaterial = tunnelMat;
+            }
+            Tunnel("AirTunnel_Floor", new Vector3(4f, by + 0.05f, 134f), new Vector3(13.8f, 0.12f, 9.4f));
+            Tunnel("AirTunnel_Ceil", new Vector3(4f, by + 5.35f, 134f), new Vector3(13.8f, 0.14f, 9.4f));
+            Tunnel("AirTunnel_W1", new Vector3(-2.9f, by + 2.7f, 134f), new Vector3(0.18f, 5.4f, 9.4f));
+            Tunnel("AirTunnel_W2", new Vector3(10.9f, by + 2.7f, 134f), new Vector3(0.18f, 5.4f, 9.4f));
+            AutoDoor("Airlock_W_Gate", new Vector3(-58f, by, 190f), 18f, 9.2f, 0.5f, 4.5f, 16f, 2.2f, 90f);
             Report.AppendLine("[基地] 玻璃半球防护罩；南人气闸双道门(x=+4实测对位)+西车闸大门（glTF X轴实测镜像已补偿）");
         }
 
