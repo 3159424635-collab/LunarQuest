@@ -1076,17 +1076,27 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
         static void FixMetallicMaterials(GameObject go)
         {
             if (go == null) return;
-            var mat = LoadOrCreateMat("M_ExhibitModel", new Color(0.55f, 0.57f, 0.62f));
-            var matDark = LoadOrCreateMat("M_ExhibitDark", new Color(0.20f, 0.22f, 0.26f));
+            var urpLit = Shader.Find("Universal Render Pipeline/Lit");
+            if (urpLit == null) return;
             foreach (var r in go.GetComponentsInChildren<Renderer>(true))
             {
-                var mats = r.sharedMaterials;
+                // 用材质实例（非 shared）——修改的是场景内副本，随场景保存，不会被 gltf 重导入还原
+                var mats = r.materials;
+                bool changed = false;
                 for (int i = 0; i < mats.Length; i++)
                 {
-                    // 全部替换——不检测金属度（检测不可靠，直接换最稳）
-                    mats[i] = i % 2 == 0 ? mat : matDark;
+                    var m = mats[i];
+                    if (m == null || m.shader == urpLit) continue;
+                    var tex = m.mainTexture;
+                    var col = m.color;
+                    m.shader = urpLit;
+                    if (tex != null) m.SetTexture("_BaseMap", tex);
+                    m.SetColor("_BaseColor", col.a > 0f ? col : Color.white);
+                    m.SetFloat("_Metallic", 0f);
+                    m.SetFloat("_Smoothness", 0.2f);
+                    changed = true;
                 }
-                r.sharedMaterials = mats;
+                if (changed) r.materials = mats;
             }
         }
 
