@@ -98,8 +98,16 @@ namespace LunarQuest.EditorTools
             {
                 var vab = UnityEngine.Object.Instantiate(vabGo);
                 vab.name = "VAB";
-                vab.transform.position = new Vector3(-60f, 0f, -65f);
-                vab.transform.localScale = Vector3.one * 8f;
+                // 高度归一化到 60m（原始模型是毫米单位，直接乘缩放会变成百万米级）
+                Bounds vb = default; bool vf = true;
+                foreach (var vr in vab.GetComponentsInChildren<Renderer>())
+                { if (vf) { vb = vr.bounds; vf = false; } else vb.Encapsulate(vr.bounds); }
+                float vs = 60f / Mathf.Max(vb.size.y, 0.01f);
+                vab.transform.localScale = Vector3.one * vs;
+                vb = default; vf = true;
+                foreach (var vr in vab.GetComponentsInChildren<Renderer>())
+                { if (vf) { vb = vr.bounds; vf = false; } else vb.Encapsulate(vr.bounds); }
+                vab.transform.position = new Vector3(-60f, -vb.min.y, -65f);
                 FixMetallicMaterials(vab);
                 Report.AppendLine("[S1] VAB 总装厂房");
             }
