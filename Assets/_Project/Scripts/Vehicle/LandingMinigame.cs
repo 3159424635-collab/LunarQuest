@@ -99,15 +99,14 @@ namespace LunarQuest
             }
         }
 
-        float uiScale = 1f;
-
         void OnGUI()
         {
             if (!init) Init();
             if (!playing && !landed && !crashed) return;
-            float sw = Screen.width, sh = Screen.height;
-            // 自适应缩放：以 1280×720 为基准，小屏缩小、大屏放大
-            uiScale = Mathf.Clamp(Mathf.Min(sw / 1280f, sh / 720f), 0.5f, 2f);
+            // GUI.matrix 全局缩放：按 1280×720 逻辑分辨率设计，自动适配任何屏幕
+            float scale = Mathf.Min(Screen.width / 1280f, Screen.height / 720f);
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1));
+            float sw = 1280f, sh = 720f; // 逻辑分辨率（所有坐标基于此）
             for (float y = 0; y < sh; y += 4) Draw(new Rect(0, y, sw, 1), new Color(0, 0, 0, 0.15f));
             if (phase == 0) { DrawTransit(sw, sh); return; }
             DrawLanding(sw, sh);
@@ -117,7 +116,7 @@ namespace LunarQuest
 
         void DrawTransit(float sw, float sh)
         {
-            float w = Mathf.Min(sw * 0.8f, 650 * uiScale), h = 280 * uiScale;
+            float w = Mathf.Min(sw * 0.8f, 650), h = 280;
             var r = new Rect((sw - w) / 2, (sh - h) / 2, w, h);
             Draw(r, CBg); Border(r, CBright);
             Label(r.x, r.y + 10, w, 26, "◤ 地月转移轨迹 ◢", sL);
@@ -150,8 +149,8 @@ namespace LunarQuest
 
         void DrawLanding(float sw, float sh)
         {
-            float altW = 200 * uiScale, altH = Mathf.Min(sh * 0.65f, 420 * uiScale);
-            float altX = 15 * uiScale, altY = (sh - altH) / 2;
+            float altW = 200, altH = Mathf.Min(sh * 0.65f, 420);
+            float altX = 15, altY = (sh - altH) / 2;
             var ar = new Rect(altX, altY, altW, altH);
             Draw(ar, CBg); Border(ar, CBright);
             Label(altX, altY - 22, altW, 18, "◤ 高度剖面 ◢", sS);
@@ -184,8 +183,8 @@ namespace LunarQuest
             Line(altX + 10, safeY, altX + altW - 10, safeY, new Color(0f, 0.8f, 0.3f, 0.5f));
             Label(altX + 10, safeY - 14, altW - 20, 12, "◄ 安全区 ►", sT);
 
-            float rad = Mathf.Min(sh * 0.2f, 140 * uiScale);
-            float rcx = sw - rad - 20 * uiScale, rcy = sh / 2;
+            float rad = Mathf.Min(sh * 0.2f, 140);
+            float rcx = sw - rad - 20, rcy = sh / 2;
             var rr = new Rect(rcx - rad - 15, rcy - rad - 25, rad * 2 + 30, rad * 2 + 50);
             Draw(rr, CBg); Border(rr, CBright);
             Label(rcx - 60, rcy - rad - 22, 120, 16, "◤ 水平雷达 ◢", sS);
@@ -203,7 +202,7 @@ namespace LunarQuest
             float blx = rcx + hSpeed * 20;
             if (Time.time % 0.5f < 0.3f) Draw(new Rect(blx - 2, rcy - 2, 4, 4), CWhite);
 
-            float pw = Mathf.Min(sw * 0.85f, 600 * uiScale), ph = 80 * uiScale;
+            float pw = Mathf.Min(sw * 0.85f, 600), ph = 80;
             var pr = new Rect((sw - pw) / 2, sh - ph - 10, pw, ph);
             Draw(pr, CBg); Border(pr, CBright);
             float cw = pw / 5;
@@ -273,10 +272,10 @@ namespace LunarQuest
         {
             tex = new Texture2D(1, 1); tex.SetPixel(0, 0, Color.white); tex.Apply();
             Font f = null; try { f = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { }
-            sS = G(Mathf.RoundToInt(13 * uiScale), FontStyle.Normal, new Color(0.5f, 0.9f, 0.6f), f);
-            sM = G(Mathf.RoundToInt(Mathf.Max(14, 20 * uiScale)), FontStyle.Bold, CWhite, f);
-            sL = G(Mathf.RoundToInt(Mathf.Max(18, 24 * uiScale)), FontStyle.Bold, CBright, f);
-            sT = G(Mathf.RoundToInt(Mathf.Max(9, 11 * uiScale)), FontStyle.Normal, new Color(0.4f, 0.7f, 0.5f), f);
+            sS = G(13, FontStyle.Normal, new Color(0.5f, 0.9f, 0.6f), f);
+            sM = G(20, FontStyle.Bold, CWhite, f);
+            sL = G(24, FontStyle.Bold, CBright, f);
+            sT = G(11, FontStyle.Normal, new Color(0.4f, 0.7f, 0.5f), f);
             init = true;
         }
         GUIStyle G(int sz, FontStyle st, Color c, Font f)
