@@ -1,24 +1,27 @@
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
 namespace LunarQuest
 {
     /// <summary>
     /// 交互提示（赛博朋克 2077 风格）：准星下方，[按键徽章 + 动作文本] 水平排列。
-    /// 使用 TextMeshPro（SDF 渲染，任何缩放都清晰锐利）。
+    /// 解决字模糊：字体渲染 200px，整体 UI 缩小 0.15x → 等效 30px 但内部高分辨率。
     /// </summary>
     public class InteractionPromptUI : MonoBehaviour
     {
-        public TMP_FontAsset tmpFont;
+        public Font font;
 
         CanvasGroup group;
         Image badge;
-        TextMeshProUGUI badgeText;
-        TextMeshProUGUI label;
+        Text badgeText;
+        Text label;
         float targetAlpha;
         string shown;
+
+        // 缩放系数：字体渲染 SIZE_MULTIPLIER 倍大小，UI 整体缩小回去
+        const float SIZE_MULTIPLIER = 6f;
+        const float UI_SCALE = 1f / SIZE_MULTIPLIER;
 
         void Awake()
         {
@@ -31,51 +34,49 @@ namespace LunarQuest
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
 
-            if (tmpFont == null) tmpFont = TMP_Settings.defaultFontAsset;
-
-            // 准星
+            // 准星（正常大小）
             var cross = Rect("Crosshair", canvas.transform, new Vector2(0.5f, 0.5f), Vector2.zero);
             cross.sizeDelta = new Vector2(6f, 6f);
-            var crossImg = cross.gameObject.AddComponent<Image>();
-            crossImg.sprite = MakeDot();
-            crossImg.color = new Color(1f, 1f, 1f, 0.7f);
-            crossImg.raycastTarget = false;
+            cross.gameObject.AddComponent<Image>().sprite = MakeDot();
+            cross.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.7f);
+            cross.GetComponent<Image>().raycastTarget = false;
 
-            // 提示行（水平布局组：徽章和文本自动排列、垂直居中）
-            var row = Rect("PromptRow", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, -80f));
-            row.sizeDelta = new Vector2(800f, 72f);
+            // 提示容器：先建一个大尺寸容器，再整体缩小
+            var row = Rect("PromptRow", canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(0f, -80f * SIZE_MULTIPLIER));
+            row.sizeDelta = new Vector2(800f * SIZE_MULTIPLIER, 72f * SIZE_MULTIPLIER);
+            row.localScale = Vector3.one * UI_SCALE;
             group = row.gameObject.AddComponent<CanvasGroup>();
             group.blocksRaycasts = false;
             group.interactable = false;
             group.alpha = 0f;
 
             var hlg = row.gameObject.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 14f;
+            hlg.spacing = 14f * SIZE_MULTIPLIER;
             hlg.childAlignment = TextAnchor.MiddleCenter;
             hlg.childForceExpandWidth = false;
             hlg.childForceExpandHeight = false;
             hlg.childControlWidth = false;
             hlg.childControlHeight = false;
 
-            // 按键徽章
+            // 按键徽章（大尺寸渲染，随容器缩小）
             var badgeGo = new GameObject("KeyBadge", typeof(RectTransform));
             badgeGo.transform.SetParent(row, false);
             var badgeRect = (RectTransform)badgeGo.transform;
-            badgeRect.sizeDelta = new Vector2(64f, 64f);
+            badgeRect.sizeDelta = new Vector2(64f * SIZE_MULTIPLIER, 64f * SIZE_MULTIPLIER);
             badge = badgeGo.AddComponent<Image>();
             badge.sprite = MakeChip();
             badge.raycastTarget = false;
-            badgeText = badgeGo.AddComponent<TextMeshProUGUI>();
-            SetupTMP(badgeText, 34, FontStyles.Bold, Color.white, TextAlignmentOptions.Center);
-            badgeText.rectStretch();
+            badgeText = badgeGo.AddComponent<Text>();
+            SetupText(badgeText, (int)(34 * SIZE_MULTIPLIER), FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
+            StretchRect(badgeText.rectTransform);
 
             // 动作文本
             var labelGo = new GameObject("Label", typeof(RectTransform));
             labelGo.transform.SetParent(row, false);
             var labelRect = (RectTransform)labelGo.transform;
-            labelRect.sizeDelta = new Vector2(650f, 64f);
-            label = labelGo.AddComponent<TextMeshProUGUI>();
-            SetupTMP(label, 30, FontStyles.Normal, new Color(0.87f, 0.98f, 1f), TextAlignmentOptions.Left);
+            labelRect.sizeDelta = new Vector2(650f * SIZE_MULTIPLIER, 64f * SIZE_MULTIPLIER);
+            label = labelGo.AddComponent<Text>();
+            SetupText(label, (int)(30 * SIZE_MULTIPLIER), FontStyle.Normal, new Color(0.87f, 0.98f, 1f), TextAnchor.MiddleLeft);
         }
 
         void Start()
@@ -123,16 +124,33 @@ namespace LunarQuest
             return r;
         }
 
-        void SetupTMP(TextMeshProUGUI t, int size, FontStyles style, Color color, TextAlignmentOptions alignment)
+        void SetupText(Text t, int size, FontStyle style, Color color, TextAnchor anchor)
         {
-            if (tmpFont != null) t.font = tmpFont;
+            if (font != null) t.font = font;
+            else t.font = GetFont();
             t.fontSize = size;
             t.fontStyle = style;
             t.color = color;
-            t.alignment = alignment;
-            t.enableWordWrapping = false;
-            t.extraPadding = true;
+            t.alignment = anchor;
+            t.horizontalOverflow = HorizontalWrapMode.Overflow;
+            t.verticalOverflow = VerticalWrapMode.Overflow;
+            t.supportRichText = false;
+            t.resizeTextForBestFit = false;
             t.raycastTarget = false;
+        }
+
+        static void StretchRect(RectTransform r)
+        {
+            r.anchorMin = Vector2.zero;
+            r.anchorMax = Vector2.one;
+            r.offsetMin = Vector2.zero;
+            r.offsetMax = Vector2.zero;
+        }
+
+        static Font GetFont()
+        {
+            try { return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); }
+            catch { return Resources.GetBuiltinResource<Font>("Arial.ttf"); }
         }
 
         static Sprite MakeDot()
@@ -164,17 +182,6 @@ namespace LunarQuest
                 }
             tex.Apply();
             return Sprite.Create(tex, new Rect(0, 0, S, S), Vector2.one * 0.5f);
-        }
-    }
-
-    static class TMPExtensions
-    {
-        public static void rectStretch(this TextMeshProUGUI tmp)
-        {
-            tmp.rectTransform.anchorMin = Vector2.zero;
-            tmp.rectTransform.anchorMax = Vector2.one;
-            tmp.rectTransform.offsetMin = Vector2.zero;
-            tmp.rectTransform.offsetMax = Vector2.zero;
         }
     }
 }
