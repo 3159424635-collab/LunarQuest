@@ -57,7 +57,7 @@ namespace LunarQuest.EditorTools
             td.SetHeights(0, 0, hts);
             var lroc = AssetDatabase.LoadAssetAtPath<Texture2D>(
                 "Assets/_Project/Cinematics/Module4/Textures/NASA_Moon_LROC.jpg");
-            var tl = new TerrainLayer { diffuseTexture = lroc, tileSize = new Vector2(40f, 40f) };
+            var tl = new TerrainLayer { diffuseTexture = lroc, tileSize = new Vector2(500f, 500f) };
             td.terrainLayers = new[] { tl };
             var tgo = Terrain.CreateTerrainGameObject(td);
             tgo.name = "Terrain";
