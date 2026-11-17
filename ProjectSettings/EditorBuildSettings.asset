@@ -14,4 +14,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity
     guid: c7e9720f2f3a9684c826485d95a44802
+  - enabled: 1
+    path: Assets/_Project/Scenes/S6_AR.unity
+    guid: c69028ddfc864ea43bdccc69a353156e
   m_configObjects: {}
