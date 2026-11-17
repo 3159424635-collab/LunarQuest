@@ -788,15 +788,15 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
         {
             var td = new TerrainData
             {
-                heightmapResolution = 513,
+                heightmapResolution = 1025,
                 size = new Vector3(MapSize, HeightRange, MapSize),
             };
-            var heights = new float[513, 513];
-            for (int z = 0; z < 513; z++)
-                for (int x = 0; x < 513; x++)
+            var heights = new float[1025, 1025];
+            for (int z = 0; z < 1025; z++)
+                for (int x = 0; x < 1025; x++)
                 {
-                    float wx = x / 512f * MapSize - MapSize * 0.5f;
-                    float wz = z / 512f * MapSize - MapSize * 0.5f;
+                    float wx = x / 1024f * MapSize - MapSize * 0.5f;
+                    float wz = z / 1024f * MapSize - MapSize * 0.5f;
                     heights[z, x] = SampleHeight(wx, wz) / HeightRange;
                 }
             td.SetHeights(0, 0, heights);
@@ -819,9 +819,12 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
 
         static float SampleHeight(float x, float z)
         {
+            // 多层 Perlin 噪声（大中小三种频率叠加，模拟真实月面起伏）
             float h = 2f
-                + 0.55f * (Mathf.Sin(x * 0.021f + 1.7f) + Mathf.Sin(z * 0.017f + 0.4f))
-                + 0.35f * Mathf.Sin(x * 0.052f) * Mathf.Sin(z * 0.043f);
+                + 3.0f * Mathf.PerlinNoise(x * 0.008f + 100f, z * 0.008f + 100f)   // 大起伏
+                - 1.5f
+                + 1.2f * Mathf.PerlinNoise(x * 0.03f + 200f, z * 0.03f + 200f)     // 中细节
+                + 0.4f * Mathf.PerlinNoise(x * 0.12f + 300f, z * 0.12f + 300f);    // 小颗粒
             h -= Bowl(x, z, CraterMain, CraterMainR, CraterMainD);
             h -= Bowl(x, z, CraterB, CraterBR, CraterBD);
             h -= Bowl(x, z, CraterC, CraterCR, CraterCD);
@@ -844,10 +847,25 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
 
         static TerrainLayer BuildTerrainLayer()
         {
-            const string layerPath = "Assets/_Project/Art/Textures/TL_MoonGray.asset";
+            const string layerPath = "Assets/_Project/Art/Textures/TL_MoonLROC.asset";
             var existingLayer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(layerPath);
             if (existingLayer != null) return existingLayer;
 
+            // 优先用 NASA LROC 真实月面照片
+            var lroc = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/_Project/Cinematics/Module4/Textures/NASA_Moon_LROC.jpg");
+            if (lroc != null)
+            {
+                var layer = new TerrainLayer
+                {
+                    diffuseTexture = lroc,
+                    tileSize = new Vector2(80f, 80f), // 大铺贴，看清月面纹理
+                };
+                AssetDatabase.CreateAsset(layer, layerPath);
+                return layer;
+            }
+
+            // 后备：纯色
             const string texPath = "Assets/_Project/Art/Textures/T_MoonFlat.png";
             if (AssetDatabase.LoadAssetAtPath<Texture2D>(texPath) == null)
             {
@@ -857,13 +875,13 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 File.WriteAllBytes(texPath, tex.EncodeToPNG());
                 AssetDatabase.ImportAsset(texPath);
             }
-            var layer = new TerrainLayer
+            var fallback = new TerrainLayer
             {
                 diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath),
                 tileSize = new Vector2(30f, 30f),
             };
-            AssetDatabase.CreateAsset(layer, layerPath);
-            return layer;
+            AssetDatabase.CreateAsset(fallback, layerPath);
+            return fallback;
         }
 
         static GameObject BuildPlayer(Vector3 pos, Func<Vector3, float> ground)

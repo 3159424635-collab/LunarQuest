@@ -6,11 +6,11 @@ TerrainLayer:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: TL_MoonGray
-  m_DiffuseTexture: {fileID: 2800000, guid: 1ed2c30a32ae098458b483451517eeca, type: 3}
+  m_Name: TL_MoonLROC
+  m_DiffuseTexture: {fileID: 2800000, guid: d92bd3c3deb1ecf419234bb9ebb78d27, type: 3}
   m_NormalMapTexture: {fileID: 0}
   m_MaskMapTexture: {fileID: 0}
-  m_TileSize: {x: 30, y: 30}
+  m_TileSize: {x: 80, y: 80}
   m_TileOffset: {x: 0, y: 0}
   m_Specular: {r: 0, g: 0, b: 0, a: 0}
   m_Metallic: 0
