@@ -871,7 +871,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 var layer = new TerrainLayer
                 {
                     diffuseTexture = lroc,
-                    tileSize = new Vector2(80f, 80f), // 大铺贴，看清月面纹理
+                    tileSize = new Vector2(40f, 40f), // 大铺贴，看清月面纹理
                 };
                 AssetDatabase.CreateAsset(layer, layerPath);
                 return layer;

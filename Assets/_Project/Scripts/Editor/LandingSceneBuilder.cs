@@ -31,62 +31,43 @@ namespace LunarQuest.EditorTools
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.08f, 0.09f, 0.12f); // 深空冷调
 
-            // ---- 月面（可见但不过亮，有陨石坑细节） ----
-            var matMoon = LM("M_MoonLanding", new Color(0.45f, 0.44f, 0.42f));
-            var matCrater = LM("M_CraterDeep", new Color(0.28f, 0.27f, 0.26f));
-            var matRock = LM("M_MoonRockLand", new Color(0.38f, 0.37f, 0.35f));
-            var matTarget = LM("M_LandingTarget", new Color(0.1f, 0.8f, 0.2f));
+            // ---- 月面：与 S4 相同的 Terrain 系统（统一视觉） ----
+            var td = new TerrainData { heightmapResolution = 513, size = new Vector3(500f, 60f, 500f) };
+            var heights = new float[513, 513];
+            for (int z = 0; z < 513; z++)
+                for (int x = 0; x < 513; x++)
+                {
+                    float wx = x / 512f * 500f - 250f;
+                    float wz = z / 512f * 500f - 250f;
+                    float h = 8f * Mathf.PerlinNoise(wx * 0.01f + 50f, wz * 0.01f + 50f)
+                             + 3f * Mathf.PerlinNoise(wx * 0.04f + 150f, wz * 0.04f + 150f)
+                             + 1f * Mathf.PerlinNoise(wx * 0.15f + 250f, wz * 0.15f + 250f);
+                    // 着陆区平坦
+                    float dCenter = Mathf.Sqrt(wx * wx + wz * wz);
+                    float flat = 1f - Mathf.SmoothStep(30f, 60f, dCenter);
+                    h = Mathf.Lerp(h, 5f, flat);
+                    heights[z, x] = h / 60f;
+                }
+            td.SetHeights(0, 0, heights);
 
-            // 阿波罗 11 着陆点真实地形（NASA 数据，142k 面）
-            var apollo = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/_Project/Art/Models/Sketchfab/apollo11_landing_site/scene.gltf");
-            if (apollo != null)
+            // 与 S4 相同的 NASA LROC 贴图
+            var lrocTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/_Project/Cinematics/Module4/Textures/NASA_Moon_LROC.jpg");
+            var layer = new TerrainLayer
             {
-                var am = (GameObject)PrefabUtility.InstantiatePrefab(apollo);
-                am.name = "Apollo11Terrain";
-                am.transform.position = new Vector3(0, -30f, 0);
-                am.transform.localScale = Vector3.one * 5f;
-                Debug.Log("[LandingSceneBuilder] ✓ Apollo 11 着陆点地形已放置");
-            }
-            else
-            {
-                var moon = GameObject.CreatePrimitive(PrimitiveType.Plane);
-                moon.name = "MoonSurface";
-                moon.transform.position = new Vector3(0, -30f, 0);
-                moon.transform.localScale = new Vector3(200f, 1f, 200f);
-                moon.GetComponent<Renderer>().sharedMaterial = matMoon;
-            }
+                diffuseTexture = lrocTex != null ? lrocTex : matMoon.mainTexture as Texture2D,
+                tileSize = new Vector2(40f, 40f),
+            };
+            td.terrainLayers = new[] { layer };
 
-            // 陨石坑（深色碗状+边缘）
-            for (int i = 0; i < 15; i++)
-            {
-                var cr = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                cr.name = "Crater_" + i;
-                float cx = (i % 5 - 2) * 25f + Random.Range(-8f, 8f);
-                float cz = (i / 5 - 1) * 25f + Random.Range(-8f, 8f);
-                cr.transform.position = new Vector3(cx, -30.3f, cz);
-                float s = 4f + Random.Range(0f, 10f);
-                cr.transform.localScale = new Vector3(s, s * 0.3f, s);
-                cr.GetComponent<Renderer>().sharedMaterial = matCrater;
-                Object.DestroyImmediate(cr.GetComponent<Collider>());
-            }
-
-            // 岩石散布
-            for (int i = 0; i < 30; i++)
-            {
-                var rk = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                rk.name = "Rock_" + i;
-                rk.transform.position = new Vector3(Random.Range(-90f, 90f), -29.8f, Random.Range(-90f, 90f));
-                rk.transform.localScale = new Vector3(Random.Range(1f, 5f), Random.Range(0.5f, 3f), Random.Range(1f, 5f));
-                rk.transform.rotation = Random.rotation;
-                rk.GetComponent<Renderer>().sharedMaterial = matRock;
-                Object.DestroyImmediate(rk.GetComponent<Collider>());
-            }
+            var terrainGO = Terrain.CreateTerrainGameObject(td);
+            terrainGO.name = "LandingTerrain";
+            terrainGO.transform.position = new Vector3(-250f, -35f, -250f);
 
             // 着陆目标（绿色发光圈）
             var tgt = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             tgt.name = "LandingTarget";
-            tgt.transform.position = new Vector3(0, -29.9f, 0);
+            tgt.transform.position = new Vector3(0, -30f, 0);
             tgt.transform.localScale = new Vector3(10f, 0.02f, 10f);
             tgt.GetComponent<Renderer>().sharedMaterial = matTarget;
             Object.DestroyImmediate(tgt.GetComponent<Collider>());
