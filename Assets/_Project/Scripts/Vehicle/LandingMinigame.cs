@@ -29,7 +29,9 @@ namespace LunarQuest
         float altitude, vSpeed, hSpeed, thrust, fuel, stress;
         bool playing, landed, crashed;
         float gameTimer;
-        float tutorialTimer = 5f; // 前5秒显示教学
+        int phase = 0; // 0=地月转移(自动) 1=着陆(玩家控制)
+        float phaseTimer = 0f;
+        float transitProgress = 0f; // 地月转移进度 0-1
 
         Texture2D texWhite, texGreen, texYellow, texRed, texCyan, texDark;
         GUIStyle sLabel, sValue, sBig, sHint;
@@ -48,14 +50,28 @@ namespace LunarQuest
             landed = crashed = false;
             stress = 0f;
             gameTimer = 0f;
-            tutorialTimer = 5f;
+            phase = 0;
+            phaseTimer = 0f;
+            transitProgress = 0f;
         }
 
         void Update()
         {
             if (!playing) return;
             gameTimer += Time.deltaTime;
-            if (tutorialTimer > 0) tutorialTimer -= Time.deltaTime;
+
+            // 阶段0：地月转移（自动播放，5秒）
+            if (phase == 0)
+            {
+                phaseTimer += Time.deltaTime;
+                transitProgress = Mathf.Clamp01(phaseTimer / 5f);
+                if (phaseTimer >= 5f)
+                {
+                    phase = 1;
+                    if (QuestManager.I != null) QuestManager.I.FireEvent("landing_minigame_start");
+                }
+                return; // 阶段0不响应输入
+            }
 
             float target = Input.GetKey(KeyCode.UpArrow) ? maxThrust : 0f;
             thrust = Mathf.MoveTowards(thrust, target, thrustRate * Time.deltaTime);
@@ -104,7 +120,76 @@ namespace LunarQuest
 
             float sw = Screen.width, sh = Screen.height;
 
-            // ==== 侧视图导航平板（左侧：火箭与月面的相对位置） ====
+            // ==== 阶段0：地月转移导航平板 ====
+            if (phase == 0)
+            {
+                // 中央大面板
+                float tw = Mathf.Min(sw * 0.7f, 700f);
+                float th = 300f;
+                Rect transitRect = new Rect((sw - tw) / 2, (sh - th) / 2, tw, th);
+                GUI.color = new Color(0, 0.03f, 0.08f, 0.92f);
+                GUI.DrawTexture(transitRect, texWhite);
+                GUI.color = saved;
+                DrawBorder(transitRect, 2f, new Color(0.3f, 0.8f, 1f));
+
+                // 标题
+                GUI.Label(new Rect(transitRect.x, transitRect.y + 15, tw, 30), "地月转移轨道", sBig);
+
+                // 地球（蓝色圆，左侧）
+                float earthR = 35f;
+                float earthX = transitRect.x + 80f;
+                float earthY = transitRect.y + th / 2;
+                GUI.color = new Color(0.1f, 0.3f, 0.7f);
+                GUI.DrawTexture(new Rect(earthX - earthR, earthY - earthR, earthR * 2, earthR * 2), texWhite);
+                GUI.color = saved;
+                GUI.Label(new Rect(earthX - 30, earthY + earthR + 5, 60, 18), "地球", sLabel);
+
+                // 月球（灰色圆，右侧）
+                float moonR = 18f;
+                float moonX = transitRect.x + tw - 80f;
+                float moonY = transitRect.y + th / 2;
+                GUI.color = new Color(0.6f, 0.58f, 0.55f);
+                GUI.DrawTexture(new Rect(moonX - moonR, moonY - moonR, moonR * 2, moonR * 2), texWhite);
+                GUI.color = saved;
+                GUI.Label(new Rect(moonX - 30, moonY + moonR + 5, 60, 18), "月球", sLabel);
+
+                // 轨迹线（地球到月球）
+                float lineY = earthY;
+                GUI.color = new Color(0.3f, 0.5f, 0.8f, 0.3f);
+                GUI.DrawTexture(new Rect(earthX + earthR, lineY - 1, moonX - earthX - earthR - moonR, 2), texWhite);
+                GUI.color = saved;
+
+                // 飞船图标（沿轨迹移动）
+                float shipX = Mathf.Lerp(earthX + earthR + 10, moonX - moonR - 10, transitProgress);
+                float shipY = lineY - 15 + Mathf.Sin(transitProgress * Mathf.PI) * 20; // 弧线
+                // 飞船三角形
+                GUI.color = Color.white;
+                GUI.DrawTexture(new Rect(shipX - 5, shipY - 5, 10, 10), texWhite);
+                GUI.color = Color.yellow;
+                GUI.DrawTexture(new Rect(shipX - 8, shipY + 5, 3, 8), texWhite); // 左尾焰
+                GUI.DrawTexture(new Rect(shipX + 5, shipY + 5, 3, 8), texWhite); // 右尾焰
+                GUI.color = saved;
+
+                // 距离显示
+                float distKm = Mathf.Lerp(384400f, 384f, transitProgress);
+                string distText = distKm > 1000 ? $"{distKm:F0} km" : $"{distKm:F0} km";
+                GUI.Label(new Rect(transitRect.x, transitRect.y + th - 60, tw, 24),
+                    $"距月球：{distText}", sValue);
+                GUI.Label(new Rect(transitRect.x, transitRect.y + th - 32, tw, 20),
+                    transitProgress < 1f ? "正在接近月球轨道..." : "已进入环月轨道，准备着陆", sLabel);
+
+                // 进度条
+                float barW = tw - 80;
+                Rect barRect = new Rect(transitRect.x + 40, transitRect.y + th - 90, barW, 6);
+                GUI.DrawTexture(barRect, texDark);
+                GUI.color = Color.cyan;
+                GUI.DrawTexture(new Rect(barRect.x, barRect.y, barW * transitProgress, 6), texWhite);
+                GUI.color = saved;
+
+                return; // 阶段0只显示转移视图
+            }
+
+            // ==== 阶段1：侧视图导航平板（着陆） ====
             float navW = 180f;
             float navH = Mathf.Min(sh * 0.6f, 420f);
             float navX = 30f;
@@ -238,8 +323,8 @@ namespace LunarQuest
             Rect hint = new Rect((sw - 500) / 2, panelY - 35, 500, 28);
             GUI.Label(hint, "↑ 加大反推（减速）   ↓ 松开（加速下降）   ←→ 水平微调", sHint);
 
-            // ==== 教学（前5秒） ====
-            if (tutorialTimer > 0 && playing)
+            // ==== 教学（阶段1前3秒） ====
+            if (phase == 1 && gameTimer < 8f && playing)
             {
                 float tw = Mathf.Min(sw * 0.8f, 600f);
                 Rect tut = new Rect((sw - tw) / 2, sh * 0.3f, tw, 100);
