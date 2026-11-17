@@ -122,6 +122,9 @@ namespace LunarQuest
 
         void SetupText(Text t, int size, FontStyle style, Color color, TextAnchor anchor)
         {
+            if (t == null) return;
+            try
+            {
             var safeFont = font != null ? font : GetFont();
             if (safeFont != null) t.font = safeFont;
             t.fontSize = size;
@@ -133,6 +136,11 @@ namespace LunarQuest
             t.supportRichText = false;
             t.resizeTextForBestFit = false;
             t.raycastTarget = false;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("[InteractionPromptUI] SetupText 安全跳过: " + e.Message);
+            }
         }
 
         static void Stretch(RectTransform r)
