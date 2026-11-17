@@ -19,8 +19,8 @@ namespace LunarQuest.EditorTools
             cam.targetTexture = rt;
             (Vector3 pos, Vector3 look, string tag)[] views =
             {
-                (new Vector3(0f, -10f, 30f), new Vector3(0f, -28f, 0f), "s3_terrain_far"),
-                (new Vector3(0f, -26f, 8f), new Vector3(0f, -29f, -5f), "s3_terrain_close"),
+                (new Vector3(0f, 40f, 60f), new Vector3(0f, 3f, 0f), "s3_terrain_far"),
+                (new Vector3(0f, 6f, 12f), new Vector3(0f, 2.5f, -8f), "s3_terrain_close"),
             };
             foreach (var v in views)
             {

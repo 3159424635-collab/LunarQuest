@@ -66,7 +66,7 @@ namespace LunarQuest.EditorTools
             // 着陆目标（绿色发光圈）
             var tgt = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             tgt.name = "LandingTarget";
-            tgt.transform.position = new Vector3(0, -30f, 0);
+            tgt.transform.position = new Vector3(0f, 2.6f, 0f);
             tgt.transform.localScale = new Vector3(10f, 0.02f, 10f);
             tgt.GetComponent<Renderer>().sharedMaterial = matTarget;
             Object.DestroyImmediate(tgt.GetComponent<Collider>());
@@ -87,7 +87,7 @@ namespace LunarQuest.EditorTools
             psShape.angle = 30f;
             var psEmit = ps.emission;
             psEmit.rateOverTime = 50f;
-            dustGo.transform.position = new Vector3(0, -29f, 0);
+            dustGo.transform.position = new Vector3(0f, 2.2f, 0f);
             dustGo.SetActive(false); // 由 LandingMinigame 控制启用
 
             // ---- 相机（向下看月面，星空在四周） ----

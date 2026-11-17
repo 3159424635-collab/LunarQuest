@@ -68,7 +68,7 @@ namespace LunarQuest
             stress = Mathf.Clamp01(Mathf.Max(Mathf.Abs(vSpeed) / (safeVerticalSpeed * 2), Mathf.Abs(hSpeed) / (safeHorizontalSpeed * 2)));
             if (mainCam)
             {
-                Vector3 basePos = new Vector3(hSpeed * 2f, Mathf.Lerp(-29.5f, 0, altitude / startAltitude), 0);
+                Vector3 basePos = new Vector3(hSpeed * 2f, 2.5f + altitude * 0.09f, 0f);
                 // 推力震动（推力越大越抖）
                 float thrustShake = (thrust / maxThrust) * 0.08f;
                 // 着陆震动（衰减）
