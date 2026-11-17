@@ -83,11 +83,22 @@ namespace LunarQuest.EditorTools
                     shts[z, x] = h / 15f;
                 }
             std.SetHeights(0, 0, shts);
+            // 草地纹理：程序生成（绿色+噪声颗粒，不是地球照片）
+            var grassTex = new Texture2D(64, 64, TextureFormat.RGB24, false);
+            var rng = new System.Random(42);
+            for (int py = 0; py < 64; py++)
+                for (int px = 0; px < 64; px++)
+                {
+                    float v = 0.38f + 0.08f * (float)rng.NextDouble();
+                    grassTex.SetPixel(px, py, new Color(v, v + 0.12f, v - 0.05f));
+                }
+            grassTex.Apply();
+            File.WriteAllBytes("Assets/_Project/Art/Textures/T_Grass.png", grassTex.EncodeToPNG());
+            AssetDatabase.ImportAsset("Assets/_Project/Art/Textures/T_Grass.png");
             var earthLayer = new TerrainLayer
             {
-                diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                    "Assets/_Project/Cinematics/Module4/Textures/NASA_Earth_BlueMarble.jpg"),
-                tileSize = new Vector2(100f, 100f),
+                diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Project/Art/Textures/T_Grass.png"),
+                tileSize = new Vector2(20f, 20f),
             };
             std.terrainLayers = new[] { earthLayer };
             var stgo = Terrain.CreateTerrainGameObject(std);
