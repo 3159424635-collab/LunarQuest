@@ -584,15 +584,15 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 "月面最高时速约 18 公里，三台车累计行驶约 90 公里。",
                 ModelDir + "/SM_Rover_Apollo.glb", 3.4f);
             PlaceStand(1, new Vector3(0.6f, 0f, 173.4f), y0,
-                "玉兔二号月球车（占位模型）",
-                "嫦娥四号任务 2019 年实现人类首次月球背面软着陆巡视，" +
-                "玉兔二号设计寿命 3 个月，实际工作超过 5 年。",
-                KenneyDir + "/spaceCraft1.fbx", 2.6f);
+                "玉兔二号月球车",
+                "嫦娥四号任务 2019 年实现人类首次月球背面软着陆巡视。" +
+                "玉兔二号设计寿命 3 个月，实际工作超过 5 年。太阳能板供电，六轮驱动。",
+                "Assets/_Project/Art/Models/Sketchfab/yutu_rover/scene.gltf", 2.6f);
             PlaceStand(2, new Vector3(-8.6f, 0f, 182.6f), y0,
-                "嫦娥五号返回舱（占位模型）",
+                "月面着陆舱（嫦娥五号系列）",
                 "2020 年嫦娥五号完成我国首次地外天体采样返回，" +
-                "带回月壤样品 1731 克，本作 HUD 数据卡同款数字。",
-                KenneyDir + "/spaceCraft5.fbx", 2.6f);
+                "带回月壤样品 1731 克。着陆舱负责月面着陆与上升器发射。",
+                "Assets/_Project/Art/Models/Sketchfab/luna25_lander/scene.gltf", 2.6f);
 
             Report.AppendLine("[展览区] 并入穹顶大厅：南门滑动门 + 展台×3 环绕全息台；绿色指挥室内景已拆除");
         }
@@ -607,7 +607,13 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             if (!string.IsNullOrEmpty(miniPath))
                 PlaceModel(miniPath, miniSize, pos, _ => topY, $"ExhibitMini_{i}", false, false);
 
-            var screenMat = LoadOrCreateMat("M_QRScreen", new Color(0.92f, 0.92f, 0.88f));
+            string[] qrTexs = { "QR_Apollo_LRV", "QR_Yutu_Rover", "QR_Luna25_Capsule" };
+            var qrTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                $"Assets/_Project/Art/Textures/QR/{qrTexs[i]}.png");
+            var screenMat = qrTex != null
+                ? new Material(Shader.Find("Universal Render Pipeline/Unlit")) { mainTexture = qrTex }
+                : LoadOrCreateMat("M_QRScreen", new Color(0.92f, 0.92f, 0.88f));
+            if (qrTex != null) AssetDatabase.CreateAsset(screenMat, $"Assets/_Project/Art/Materials/M_QR_{i}.mat");
             var screen = GameObject.CreatePrimitive(PrimitiveType.Cube);
             screen.name = $"QRScreen_{i}";
             screen.transform.position = new Vector3(pos.x, baseY + 3.2f, pos.z - 1.2f);
