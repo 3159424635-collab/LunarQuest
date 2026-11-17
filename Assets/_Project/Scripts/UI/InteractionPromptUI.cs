@@ -47,7 +47,7 @@ namespace LunarQuest
             var rowRect = (RectTransform)row.transform;
             rowRect.anchorMin = rowRect.anchorMax = new Vector2(0.5f, 0.5f);
             rowRect.anchoredPosition = new Vector2(0f, -90f);
-            rowRect.sizeDelta = new Vector2(0f, 70f); // 宽度自适应
+            rowRect.sizeDelta = new Vector2(Mathf.Min(800f, Screen.width * 0.85f), 70f);
             group = row.AddComponent<CanvasGroup>();
             group.blocksRaycasts = false;
             group.interactable = false;
@@ -77,7 +77,7 @@ namespace LunarQuest
             var labelGo = new GameObject("Label", typeof(RectTransform));
             labelGo.transform.SetParent(rowRect, false);
             var labelRect = (RectTransform)labelGo.transform;
-            labelRect.sizeDelta = new Vector2(600f, 56f);
+            labelRect.sizeDelta = new Vector2(Mathf.Min(600f, Screen.width * 0.6f), 56f);
             label = labelGo.AddComponent<Text>();
             SetupText(label, 28, FontStyle.Normal, new Color(0.87f, 0.98f, 1f), TextAnchor.MiddleLeft);
             var outline = labelGo.AddComponent<Outline>();

@@ -11,7 +11,7 @@ namespace LunarQuest
     /// </summary>
     public class PlayerInteractor : MonoBehaviour
     {
-        public float interactRange = 3f;          // 交互距离（米）
+        public float interactRange = 4f;          // 交互距离（米）
 
         /// <summary>提示变化：看向可交互物时传入提示文字，移开时传入 null。</summary>
         public event Action<string> OnPromptChanged;
@@ -25,8 +25,14 @@ namespace LunarQuest
         {
             InteractableBase hit = null;
             Ray ray = new Ray(cam.transform.position, cam.transform.forward);
-            if (Physics.Raycast(ray, out RaycastHit info, interactRange))
-                hit = info.collider.GetComponentInParent<InteractableBase>();
+            // RaycastAll 穿透检测：视线内的地板/家具不遮挡交互——取最近的可交互物
+            var hits = Physics.RaycastAll(ray, interactRange);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var h in hits)
+            {
+                var ib = h.collider.GetComponentInParent<InteractableBase>();
+                if (ib != null) { hit = ib; break; }
+            }
 
             // 只在目标变化时广播，避免 HUD 每帧刷新。
             // 用 ReferenceEquals 而非 !=：Unity 会把已销毁对象判为 null，

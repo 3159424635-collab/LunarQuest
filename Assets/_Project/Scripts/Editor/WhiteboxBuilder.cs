@@ -608,6 +608,17 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             {
                 var mini = PlaceModel(miniPath, miniSize, pos, _ => topY, "ExhibitMini_" + i, false, false);
                 FixMetallicMaterials(mini);
+                if (mini != null)
+                {
+                    // 模型挂为桌子子物体 + 加碰撞体：玩家准星打到模型也能触发交互提示
+                    mini.transform.SetParent(ped.transform, true);
+                    Bounds mb = LocalBounds(mini.transform);
+                    var mc = mini.AddComponent<BoxCollider>();
+                    mc.center = ped.transform.InverseTransformPoint(mb.center);
+                    var inv = ped.transform.worldToLocalMatrix;
+                    var sizeW = inv.MultiplyVector(mb.size);
+                    mc.size = new Vector3(Mathf.Abs(sizeW.x), Mathf.Abs(sizeW.y), Mathf.Abs(sizeW.z));
+                }
             }
 
             // 二维码改为数据卡 UI 内嵌显示
