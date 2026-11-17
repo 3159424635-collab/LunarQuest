@@ -942,7 +942,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 cb2 = default; cf2 = true;
                 foreach (var cr in cm.GetComponentsInChildren<Renderer>())
                 { if (cf2) { cb2 = cr.bounds; cf2 = false; } else cb2.Encapsulate(cr.bounds); }
-                cm.transform.position = new Vector3(120f, ground(new Vector3(120f, 0f, -40f)) - cb2.min.y, -40f);
+                cm.transform.position = new Vector3(120f, 2f - cb2.min.y, -40f); // 着陆区已压平至2m
                 FixMetallicMaterials(cm);
                 Report.AppendLine("[着陆区] 指令舱已放置（组员交付 Apollo CM，4m）");
             }
