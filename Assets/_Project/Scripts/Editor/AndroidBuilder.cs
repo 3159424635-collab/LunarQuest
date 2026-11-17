@@ -25,15 +25,10 @@ namespace LunarQuest.EditorTools
             PlayerSettings.companyName = "LunarQuest";
             PlayerSettings.productName = "月征AR";
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.lunarquest.ar");
-            PlayerSettings.defaultOrientation = UIOrientation.AutoRotation;
-            PlayerSettings.allowedAutorotateToPortrait = true;
-            PlayerSettings.allowedAutorotateToLandscapeLeft = false;
-            PlayerSettings.allowedAutorotateToLandscapeRight = false;
-            PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+            PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
+            
 
-            // ARCore 需要
-            PlayerSettings.ARSession.attemptUpdate = true;
-            PlayerSettings.ARSession.require = true;
+            
 
             string apkPath = @"D:\下载\LunarQuest_AR.apk";
 
