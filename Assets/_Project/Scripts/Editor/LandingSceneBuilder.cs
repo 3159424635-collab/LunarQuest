@@ -167,7 +167,11 @@ namespace LunarQuest.EditorTools
             if (dd < r) return d * (0.55f + 0.45f * Mathf.Cos(Mathf.PI * dd / r));
             return -d * 0.2f * Mathf.Sin(Mathf.PI * (dd - r) / (0.9f * r));
         }
-        static float FlatF(float d, float r) => 1f - Mathf.SmoothStep(r * 0.65f, r, d);
+        static float FlatF(float d, float r)
+        {
+            float t = Mathf.Clamp01((d - r * 0.65f) / (r * 0.35f));
+            return 1f - t * t * (3f - 2f * t);
+        }
         static float Dist2(float x, float z, float cx, float cz) => Mathf.Sqrt((x - cx) * (x - cx) + (z - cz) * (z - cz));
 
         static Material LM(string n, Color c)

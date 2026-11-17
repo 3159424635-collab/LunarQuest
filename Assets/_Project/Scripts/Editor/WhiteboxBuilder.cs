@@ -735,7 +735,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             Tunnel("GateW_S", new Vector3(-53f, by + 4.7f, 180.7f), new Vector3(10f, 9.4f, 0.18f));
             // 基地基座平台：混凝土底盘填满玻璃罩投影，消除任何悬空缝隙
             float padY = ground(new Vector3(4f, 0f, 190f));
-            var pad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            var pad = GameObject.CreatePrimitive(PrimitiveType.Cube); // Cube的BoxCollider在非均匀缩放下精确（Cylinder胶囊体会失真膨胀）
             pad.name = "BaseFoundation";
             pad.transform.position = new Vector3(4f, padY + 0.08f, 190f);
             pad.transform.localScale = new Vector3(112f, 0.16f, 112f); // 直径112m 盖住 r52 罩+裙边
@@ -873,7 +873,13 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             return -d * 0.2f * Mathf.Sin(Mathf.PI * (dd - r) / (0.9f * r));
         }
 
-        static float FlatFactor(float d, float r) => 1f - Mathf.SmoothStep(r * 0.65f, r, d);
+        static float FlatFactor(float d, float r)
+        {
+            // 手写平滑插值（Mathf.SmoothStep(from,to,x) 返回的是 from~to 的值而非 0~1，此处需要归一比例）
+            float t = Mathf.Clamp01((d - r * 0.65f) / (r * 0.35f));
+            float s = t * t * (3f - 2f * t);
+            return 1f - s;
+        }
         static float Dist(float x, float z, Vector2 c) => Vector2.Distance(new Vector2(x, z), c);
 
         static TerrainLayer BuildTerrainLayer()
