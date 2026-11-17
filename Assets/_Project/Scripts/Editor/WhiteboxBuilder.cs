@@ -605,8 +605,10 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             Bounds pb = LocalBounds(ped.transform);
             float topY = pb.max.y + 0.05f;
             if (!string.IsNullOrEmpty(miniPath))
-                var mini = PlaceModel(miniPath, miniSize, pos, _ => topY, $"ExhibitMini_{i}", false, false);
-            FixMetallicMaterials(mini);
+            {
+                var mini = PlaceModel(miniPath, miniSize, pos, _ => topY, "ExhibitMini_" + i, false, false);
+                FixMetallicMaterials(mini);
+            }
 
             // 二维码改为数据卡 UI 内嵌显示
             var stand = ped.AddComponent<ExhibitStand>();
