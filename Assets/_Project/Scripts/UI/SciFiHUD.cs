@@ -185,7 +185,7 @@ namespace LunarQuest
             {
                 int idx = i;
                 var chip = SciFiGUI.Rect("Choice_" + i, choicesRoot, Vector2.zero, Vector2.zero);
-                chip.sizeDelta = new Vector2(Mathf.Min(safe.width * 0.45f, 440f), 40f);
+                chip.sizeDelta = new Vector2(Mathf.Min(Screen.safeArea.width * 0.45f, 440f), 40f);
                 var img = chip.gameObject.AddComponent<Image>();
                 img.sprite = panelSprite;
                 img.type = Image.Type.Sliced;
