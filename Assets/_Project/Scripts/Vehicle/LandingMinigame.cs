@@ -100,6 +100,7 @@ namespace LunarQuest
         {
             if (!init) Init();
             if (!playing && !landed && !crashed) return;
+            Color saved = GUI.color;
 
             float sw = Screen.width, sh = Screen.height;
 
