@@ -1,0 +1,11 @@
+Model Information:
+* title:	SATURN V & LAUNCH COMPLEX
+* source:	https://sketchfab.com/3d-models/saturn-v-launch-complex-61b48e7a6c384e17ae1681c50d8e67b6
+* author:	Adastra (https://sketchfab.com/adastra)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "SATURN V & LAUNCH COMPLEX" (https://sketchfab.com/3d-models/saturn-v-launch-complex-61b48e7a6c384e17ae1681c50d8e67b6) by Adastra (https://sketchfab.com/adastra) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

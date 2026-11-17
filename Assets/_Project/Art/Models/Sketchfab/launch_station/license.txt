@@ -1,0 +1,11 @@
+Model Information:
+* title:	Low Poly Space Launch Station
+* source:	https://sketchfab.com/3d-models/low-poly-space-launch-station-cbe59336373c40f98fb1695359928395
+* author:	Anaïs3Dcraft (https://sketchfab.com/anais.fernandez)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Low Poly Space Launch Station" (https://sketchfab.com/3d-models/low-poly-space-launch-station-cbe59336373c40f98fb1695359928395) by Anaïs3Dcraft (https://sketchfab.com/anais.fernandez) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

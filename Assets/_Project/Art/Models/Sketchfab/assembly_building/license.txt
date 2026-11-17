@@ -1,0 +1,11 @@
+Model Information:
+* title:	Vehicle Assembly Building
+* source:	https://sketchfab.com/3d-models/vehicle-assembly-building-3b37036c698548a48f727f8c8f21c01b
+* author:	Stanley Creative (https://sketchfab.com/Stanley_Creative)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Vehicle Assembly Building" (https://sketchfab.com/3d-models/vehicle-assembly-building-3b37036c698548a48f727f8c8f21c01b) by Stanley Creative (https://sketchfab.com/Stanley_Creative) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

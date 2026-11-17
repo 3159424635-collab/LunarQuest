@@ -91,15 +91,62 @@ namespace LunarQuest.EditorTools
             for (int i = 0; i < fences.Length; i++)
                 PlaceKenney("metalFence", 24f, fences[i].p, Flat, "PadFence_" + i, false, new Vector3(0f, fences[i].r, 0f));
 
+            // ---- VAB 垂直总装厂房（远景地标） ----
+            var vabGo = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/_Project/Art/Models/Sketchfab/assembly_building/scene.gltf");
+            if (vabGo != null)
+            {
+                var vab = UnityEngine.Object.Instantiate(vabGo);
+                vab.name = "VAB";
+                vab.transform.position = new Vector3(-60f, 0f, -65f);
+                vab.transform.localScale = Vector3.one * 8f;
+                FixMetallicMaterials(vab);
+                Report.AppendLine("[S1] VAB 总装厂房");
+            }
+            // ---- 燃料储罐区（3个） ----
+            var tankGo = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/_Project/Art/Models/Sketchfab/fuel_tank/scene.gltf");
+            if (tankGo != null)
+            {
+                for (int ti = 0; ti < 3; ti++)
+                {
+                    var tank = UnityEngine.Object.Instantiate(tankGo);
+                    tank.name = "FuelTank_" + ti;
+                    tank.transform.position = new Vector3(32f + ti * 12f, 0f, -55f);
+                    tank.transform.localScale = Vector3.one * 3f;
+                    FixMetallicMaterials(tank);
+                }
+                Report.AppendLine("[S1] 燃料储罐 x3");
+            }
+            // ---- 灯柱照明 ----
+            (float x, float z)[] s1Lamps = { (-20, -25), (20, -25), (-20, -55), (20, -55), (50, -10), (50, -30), (-50, -15) };
+            foreach (var (lx, lz) in s1Lamps)
+            {
+                var pp = new Vector3(lx, 0f, lz);
+                BuildLampPost(pp, 0f, 3.5f, "Lamp_S1_" + (int)lx + "_" + (int)lz);
+            }
+            // ---- 追踪天线+储物+观测台 ----
+            PlaceKenney("satelliteDishLarge", 6f, new Vector3(60f, 0f, -20f), Flat, "TrackingAntenna", false, null);
+            PlaceKenney("barrelLarge", 2f, new Vector3(45f, 0f, -25f), Flat, "Barrel_1", false, null);
+            PlaceKenney("barrelLarge", 2f, new Vector3(47f, 0f, -23f), Flat, "Barrel_2", false, null);
+            PlaceKenney("containerWide", 6f, new Vector3(-45f, 0f, -30f), Flat, "Storage_1", false, new Vector3(0f, 30f, 0f));
+            PlaceKenney("containerFlat", 5f, new Vector3(-45f, 0f, -22f), Flat, "Storage_2", false, new Vector3(0f, 15f, 0f));
+            var platform = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            platform.name = "ViewingPlatform";
+            platform.transform.position = new Vector3(0f, 0.1f, 15f);
+            platform.transform.localScale = new Vector3(12f, 0.2f, 12f);
+            platform.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_Platform", new Color(0.60f, 0.60f, 0.58f));
+
             // 指挥中心与控制台
             PlaceKenney("buildingOpen", 12f, new Vector3(38f, 0f, -20f), Flat, "ControlCenter", true, new Vector3(0f, -90f, 0f));
             PlaceKenney("console", 2.6f, new Vector3(35f, 0f, -17f), Flat, "Console_A", false, null);
             PlaceKenney("console", 2.6f, new Vector3(41f, 0f, -17f), Flat, "Console_B", false, null);
+            PlaceKenney("computer-wide", 2.6f, new Vector3(38f, 0f, -14f), Flat, "Console_C", false, null);
 
             // 林岚与玩家
-            PlaceNpc("ground_flight_controller", "林岚_飞控", new Vector3(31f, 0f, -11f), Flat,
+            PlaceNpc("ground_flight_controller", "林岚_飞控", new Vector3(33f, 0f, -13f), Flat,
                 "欢迎加入任务。跟我来，先熟悉操作，再去看发射。");
-            var player = BuildPlayer(new Vector3(35f, 0f, -7f), Flat);
+            var player = BuildPlayer(new Vector3(35f, 0f, -5f), Flat);
             var sciFont1 = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/NotoSansCJKsc-Regular.otf");
             var sci1 = new GameObject("SciFiHUD").AddComponent<SciFiHUD>();
             sci1.font = sciFont1;
@@ -184,9 +231,9 @@ namespace LunarQuest.EditorTools
             BuildSealWall(Ground);
             BuildAirlockPortal(new Vector3(4f, 0f, 129.0f), 0f, 13.2f, 5.4f, Ground, "Portal_S");
             BuildAirlockPortal(new Vector3(-58f, 0f, 190f), 90f, 18f, 9.2f, Ground, "Portal_W");
-            PlaceNpc("base_coordinator", "周航_协调员", new Vector3(8f, 0f, 164f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
-            PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(4f, 0f, 181f), Ground, "样本先放我这里，参观完科普厅再走。");
-            PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(16f, 0f, 116f), Ground, "车就在外面，月面路滑，慢点开。");
+            PlaceNpc("base_coordinator", "周航_协调员", new Vector3(-1f, 0f, 175f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
+            PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(2f, 0f, 179f), Ground, "样本先放我这里，参观完科普厅再走。");
+            PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(15f, 0f, 115f), Ground, "车就在外面，月面路滑，慢点开。");
             BuildSampleRocks(Ground);
             BuildRockField(Ground);
             BuildMinimap(player.transform);
