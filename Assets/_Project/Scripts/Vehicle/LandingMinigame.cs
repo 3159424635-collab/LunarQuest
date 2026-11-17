@@ -103,6 +103,89 @@ namespace LunarQuest
 
             float sw = Screen.width, sh = Screen.height;
 
+            // ==== 侧视图导航平板（左侧：火箭与月面的相对位置） ====
+            float navW = 180f;
+            float navH = Mathf.Min(sh * 0.6f, 420f);
+            float navX = 30f;
+            float navY = (sh - navH) / 2;
+
+            // 平板背景
+            GUI.color = new Color(0, 0.03f, 0.08f, 0.88f);
+            GUI.DrawTexture(new Rect(navX - 10, navY - 10, navW + 20, navH + 20), texWhite);
+            GUI.color = saved;
+            DrawBorder(new Rect(navX - 10, navY - 10, navW + 20, navH + 20), 2f, new Color(0.3f, 0.8f, 1f, 0.5f));
+
+            // 标题
+            GUI.Label(new Rect(navX, navY - 8, navW, 20), "降落视图", sLabel);
+
+            // 月面（底部灰色带）
+            float groundH = 40f;
+            Rect groundRect = new Rect(navX, navY + navH - groundH, navW - 40, groundH);
+            GUI.color = new Color(0.55f, 0.53f, 0.50f);
+            GUI.DrawTexture(groundRect, texWhite);
+            GUI.color = saved;
+            // 月面纹理线
+            GUI.color = new Color(0.4f, 0.38f, 0.36f);
+            for (int i = 0; i < 4; i++)
+            {
+                float gx = navX + 10 + i * (navW - 60) / 4;
+                GUI.DrawTexture(new Rect(gx, groundRect.y + 5 + i * 8, 15, 4), texWhite);
+            }
+            GUI.color = saved;
+
+            // 火箭图标位置（根据高度从上到下移动）
+            float altPct = Mathf.Clamp01(altitude / startAltitude);
+            float landerY = navY + 20 + (1 - altPct) * (navH - groundH - 60);
+            float landerX = navX + (navW - 40) / 2 + hSpeed * 8; // 水平偏移可视化
+
+            // 距离线（从火箭到月面的虚线）
+            GUI.color = new Color(0.3f, 0.8f, 1f, 0.3f);
+            float lineY = landerY + 15;
+            float groundY = groundRect.y;
+            for (float ly = lineY; ly < groundY; ly += 8)
+            {
+                GUI.DrawTexture(new Rect(landerX + 5, ly, 2, 4), texWhite);
+            }
+            GUI.color = saved;
+
+            // 火箭图标（三角+尾焰）
+            // 舱体
+            GUI.color = Color.white;
+            GUI.DrawTexture(new Rect(landerX - 6, landerY, 12, 16), texWhite);
+            GUI.color = saved;
+            // 尾焰（推力越大越长）
+            float flameLen = (thrust / maxThrust) * 20f;
+            if (flameLen > 1)
+            {
+                GUI.color = Color.yellow;
+                GUI.DrawTexture(new Rect(landerX - 3, landerY + 16, 6, flameLen), texWhite);
+                GUI.color = new Color(1f, 0.5f, 0f);
+                GUI.DrawTexture(new Rect(landerX - 2, landerY + 16, 4, flameLen * 0.6f), texWhite);
+                GUI.color = saved;
+            }
+
+            // 速度箭头（在火箭右侧，长度∝速度）
+            float arrowLen = Mathf.Clamp(Mathf.Abs(vSpeed) * 1.5f, 5, 50);
+            Color arrowCol = Mathf.Abs(vSpeed) <= safeVerticalSpeed ? Color.green : Color.red;
+            // 向下箭头（下降）
+            float arrowX = landerX + 25;
+            float arrowY = landerY + 8;
+            GUI.color = arrowCol;
+            GUI.DrawTexture(new Rect(arrowX, arrowY, 3, arrowLen), texWhite);
+            // 箭头尖
+            GUI.DrawTexture(new Rect(arrowX - 3, arrowY + arrowLen, 9, 5), texWhite);
+            GUI.color = saved;
+
+            // 高度标注（在火箭旁边）
+            GUI.Label(new Rect(landerX - 50, landerY - 20, 100, 18), $"{altitude:F0}m", sLabel);
+
+            // 安全区标记（月面上方5m/s速度线）
+            float safeLineY = groundRect.y - 20;
+            GUI.color = new Color(0f, 1f, 0f, 0.4f);
+            GUI.DrawTexture(new Rect(navX + 5, safeLineY, navW - 50, 1), texWhite);
+            GUI.color = saved;
+            GUI.Label(new Rect(navX + 5, safeLineY - 16, navW - 50, 14), "安全着陆区", sLabel);
+
             // ==== 底部信息面板 ====
             float panelW = Mathf.Min(sw * 0.85f, 700f);
             float panelH = 130f;
