@@ -104,13 +104,7 @@ namespace LunarQuest.EditorTools
             var sci1 = new GameObject("SciFiHUD").AddComponent<SciFiHUD>();
             sci1.font = sciFont1;
             var promptUi1 = new GameObject("InteractionPromptUI").AddComponent<InteractionPromptUI>();
-            var tmpFont1 = AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>("Assets/_Project/Art/Fonts/NotoSansCJK_TMP.asset");
-            if (tmpFont1 == null && sciFont1 != null)
-            {
-                tmpFont1 = TMPro.TMP_FontAsset.CreateFontAsset(sciFont1);
-                if (tmpFont1 != null) AssetDatabase.CreateAsset(tmpFont1, "Assets/_Project/Art/Fonts/NotoSansCJK_TMP.asset");
-            }
-            promptUi1.tmpFont = tmpFont1;
+            promptUi1.font = sciFont1;
             var qm1 = new GameObject("QuestManager").AddComponent<QuestManager>();
             qm1.database = AssetDatabase.LoadAssetAtPath<TextAsset>(
                 "Assets/_Project/Content/Characters/dialogue.json");
@@ -201,19 +195,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             var sci = new GameObject("SciFiHUD").AddComponent<SciFiHUD>();
             sci.font = sciFont;
             var promptUi = new GameObject("InteractionPromptUI").AddComponent<InteractionPromptUI>();
-            // TMP 字体：从思源黑体生成 SDF 资产
-            var tmpFontPath = "Assets/_Project/Art/Fonts/NotoSansCJK_TMP.asset";
-            var tmpFont = AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>(tmpFontPath);
-            if (tmpFont == null && sciFont != null)
-            {
-                tmpFont = TMPro.TMP_FontAsset.CreateFontAsset(sciFont);
-                if (tmpFont != null)
-                {
-                    AssetDatabase.CreateAsset(tmpFont, tmpFontPath);
-                    Debug.Log("[SciFiHUD] TMP 字体已创建: " + tmpFontPath);
-                }
-            }
-            promptUi.tmpFont = tmpFont;
+            promptUi.font = sciFont;
             var qmGo = new GameObject("QuestManager");
             var qm = qmGo.AddComponent<QuestManager>();
             qm.database = AssetDatabase.LoadAssetAtPath<TextAsset>(
