@@ -73,15 +73,21 @@ namespace LunarQuest.EditorTools
                 mr.enabled = false;
 
             // 阿波罗 11 着陆点模型（视觉主地形，NASA 数据）
+            // 注意：glTFast 资产用 Object.Instantiate 深拷贝（PrefabUtility.InstantiatePrefab 对它只生成空壳）
             var apollo = AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/_Project/Art/Models/Sketchfab/apollo11_landing_site/scene.gltf");
             if (apollo != null)
             {
-                var am = (GameObject)PrefabUtility.InstantiatePrefab(apollo);
+                var am = Object.Instantiate(apollo);
                 am.name = "Apollo11Terrain";
                 am.transform.position = new Vector3(0, -30f, 0);
                 am.transform.localScale = Vector3.one * 5f;
-                Debug.Log("[LandingSceneBuilder] ✓ Apollo 11 着陆点地形已放置（视觉层）");
+                int meshCount = am.GetComponentsInChildren<MeshFilter>().Length;
+                Debug.Log($"[LandingSceneBuilder] Apollo 11 地形已放置（含 {meshCount} 个网格）");
+            }
+            else
+            {
+                Debug.LogError("[LandingSceneBuilder] Apollo 模型加载失败！");
             }
 
             // 着陆目标（绿色发光圈）

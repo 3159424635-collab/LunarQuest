@@ -818,7 +818,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 "Assets/_Project/Art/Models/Sketchfab/lunar_terrain_detailed/scene.gltf");
             if (terrainModel != null)
             {
-                var tm = (GameObject)PrefabUtility.InstantiatePrefab(terrainModel);
+                var tm = UnityEngine.Object.Instantiate(terrainModel);
                 tm.name = "LunarTerrainVisual";
                 tm.transform.position = new Vector3(0f, 1f, 170f); // 略高于Terrain表面
                 tm.transform.localScale = Vector3.one * 2.5f; // 放大匹配 500m 地图
