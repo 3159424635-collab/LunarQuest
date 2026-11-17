@@ -670,7 +670,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 "玉兔二号月球车",
                 "嫦娥四号任务 2019 年实现人类首次月球背面软着陆巡视。" +
                 "玉兔二号设计寿命 3 个月，实际工作超过 5 年。太阳能板供电，六轮驱动。",
-                "Assets/_Project/Art/Models/Sketchfab/yutu_rover/scene.gltf", 2.6f);
+                "Assets/_Project/Art/Models/玉兔.fbx", 2.6f);
             PlaceStand(2, new Vector3(-8.6f, 0f, 182.6f), y0,
                 "月面着陆舱（嫦娥五号系列）",
                 "2020 年嫦娥五号完成我国首次地外天体采样返回，" +
@@ -926,6 +926,25 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 tm.transform.localScale = Vector3.one * 2.5f; // 放大匹配 500m 地图
                 tm.SetActive(true);
                 Report.AppendLine("[地形] NASA 级月面视觉层已叠加（48.7 万面陨石坑地形）");
+            }
+            // 着陆区放指令舱（组员交付的阿波罗CM模型）
+            var cmGo = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/_Project/Art/Models/月球操作仓.fbx");
+            if (cmGo != null)
+            {
+                var cm = UnityEngine.Object.Instantiate(cmGo);
+                cm.name = "LandedCapsule";
+                Bounds cb2 = default; bool cf2 = true;
+                foreach (var cr in cm.GetComponentsInChildren<Renderer>())
+                { if (cf2) { cb2 = cr.bounds; cf2 = false; } else cb2.Encapsulate(cr.bounds); }
+                float cs = 4f / Mathf.Max(cb2.size.y, 0.01f); // 高度归一到4m
+                cm.transform.localScale = Vector3.one * cs;
+                cb2 = default; cf2 = true;
+                foreach (var cr in cm.GetComponentsInChildren<Renderer>())
+                { if (cf2) { cb2 = cr.bounds; cf2 = false; } else cb2.Encapsulate(cr.bounds); }
+                cm.transform.position = new Vector3(120f, Ground(new Vector3(120f, 0f, -40f)) - cb2.min.y, -40f);
+                FixMetallicMaterials(cm);
+                Report.AppendLine("[着陆区] 指令舱已放置（组员交付 Apollo CM，4m）");
             }
             Report.AppendLine($"[地形] 500x500m；3号坑@({CraterMain.x},{CraterMain.y}) r={CraterMainR} d={CraterMainD}m；基地平区@({BaseFlat.x},{BaseFlat.y}) r={BaseFlatR}m；着陆区@({LandingFlat.x},{LandingFlat.y}) r={LandingFlatR}m");
             return go.GetComponent<Terrain>();

@@ -24,7 +24,7 @@ namespace LunarQuest.EditorTools
 
         public static void InspectCustomBase()
         {
-            Inspect("Assets/_Project/Art/Models/Sketchfab/SM_MoonBase_Custom.glb", "custombase");
+            Inspect("Assets/_Project/Art/Models/月球操作仓.fbx", "opod");
         }
 
         // 全面排查建筑漏缝：外围四角度 + 所有关键连接点
