@@ -31,6 +31,9 @@ namespace LunarQuest.EditorTools
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.08f, 0.09f, 0.12f); // 深空冷调
 
+            var matMoon = LM("M_MoonLanding", new Color(0.45f, 0.44f, 0.42f));
+            var matTarget = LM("M_LandingTarget", new Color(0.1f, 0.8f, 0.2f));
+
             // ---- 月面：与 S4 相同的 Terrain 系统（统一视觉） ----
             var td = new TerrainData { heightmapResolution = 513, size = new Vector3(500f, 60f, 500f) };
             var heights = new float[513, 513];
@@ -55,7 +58,7 @@ namespace LunarQuest.EditorTools
                 "Assets/_Project/Cinematics/Module4/Textures/NASA_Moon_LROC.jpg");
             var layer = new TerrainLayer
             {
-                diffuseTexture = lrocTex != null ? lrocTex : matMoon.mainTexture as Texture2D,
+                diffuseTexture = lrocTex,
                 tileSize = new Vector2(40f, 40f),
             };
             td.terrainLayers = new[] { layer };
