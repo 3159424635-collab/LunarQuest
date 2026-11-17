@@ -813,6 +813,18 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 AssetDatabase.Refresh();
             }
             AssetDatabase.CreateAsset(td, terrainAsset);
+            // 高精度月面地形模型（视觉增强层，叠在 Terrain 上方）
+            var terrainModel = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/_Project/Art/Models/Sketchfab/lunar_terrain_detailed/scene.gltf");
+            if (terrainModel != null)
+            {
+                var tm = (GameObject)PrefabUtility.InstantiatePrefab(terrainModel);
+                tm.name = "LunarTerrainVisual";
+                tm.transform.position = new Vector3(0f, ground(new Vector3(0, 0, 170f)) - 1f, 170f);
+                tm.transform.localScale = Vector3.one * 2.5f; // 放大匹配 500m 地图
+                tm.SetActive(true);
+                Report.AppendLine("[地形] NASA 级月面视觉层已叠加（48.7 万面陨石坑地形）");
+            }
             Report.AppendLine($"[地形] 500x500m；3号坑@({CraterMain.x},{CraterMain.y}) r={CraterMainR} d={CraterMainD}m；基地平区@({BaseFlat.x},{BaseFlat.y}) r={BaseFlatR}m；着陆区@({LandingFlat.x},{LandingFlat.y}) r={LandingFlatR}m");
             return go.GetComponent<Terrain>();
         }

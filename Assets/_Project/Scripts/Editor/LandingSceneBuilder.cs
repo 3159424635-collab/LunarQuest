@@ -37,11 +37,25 @@ namespace LunarQuest.EditorTools
             var matRock = LM("M_MoonRockLand", new Color(0.38f, 0.37f, 0.35f));
             var matTarget = LM("M_LandingTarget", new Color(0.1f, 0.8f, 0.2f));
 
-            var moon = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            moon.name = "MoonSurface";
-            moon.transform.position = new Vector3(0, -30f, 0);
-            moon.transform.localScale = new Vector3(200f, 1f, 200f);
-            moon.GetComponent<Renderer>().sharedMaterial = matMoon;
+            // 阿波罗 11 着陆点真实地形（NASA 数据，142k 面）
+            var apollo = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/_Project/Art/Models/Sketchfab/apollo11_landing_site/scene.gltf");
+            if (apollo != null)
+            {
+                var am = (GameObject)PrefabUtility.InstantiatePrefab(apollo);
+                am.name = "Apollo11Terrain";
+                am.transform.position = new Vector3(0, -30f, 0);
+                am.transform.localScale = Vector3.one * 5f;
+                Debug.Log("[LandingSceneBuilder] ✓ Apollo 11 着陆点地形已放置");
+            }
+            else
+            {
+                var moon = GameObject.CreatePrimitive(PrimitiveType.Plane);
+                moon.name = "MoonSurface";
+                moon.transform.position = new Vector3(0, -30f, 0);
+                moon.transform.localScale = new Vector3(200f, 1f, 200f);
+                moon.GetComponent<Renderer>().sharedMaterial = matMoon;
+            }
 
             // 陨石坑（深色碗状+边缘）
             for (int i = 0; i < 15; i++)

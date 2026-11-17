@@ -1,0 +1,11 @@
+Model Information:
+* title:	Lunar Surface 3D Moon Terrain with Impact Crater
+* source:	https://sketchfab.com/3d-models/lunar-surface-3d-moon-terrain-with-impact-crater-7187c7831f254f9d8d066d35cf82bb77
+* author:	sashantnipate (https://sketchfab.com/sashantnipate)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Lunar Surface 3D Moon Terrain with Impact Crater" (https://sketchfab.com/3d-models/lunar-surface-3d-moon-terrain-with-impact-crater-7187c7831f254f9d8d066d35cf82bb77) by sashantnipate (https://sketchfab.com/sashantnipate) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
