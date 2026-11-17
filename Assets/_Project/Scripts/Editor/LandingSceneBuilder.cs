@@ -114,9 +114,9 @@ namespace LunarQuest.EditorTools
             var minigameGo = new GameObject("LandingMinigame");
             var minigame = minigameGo.AddComponent<LandingMinigame>();
             minigame.mainCam = cam;
-            minigame.startAltitude = 2000f;
+            minigame.startAltitude = 500f;
             minigame.gravity = 1.62f;
-            minigame.maxThrust = 30f;
+            minigame.maxThrust = 10f;
             minigame.safeVerticalSpeed = 5f;
             minigame.safeHorizontalSpeed = 2f;
             minigame.fuelCapacity = 100f;

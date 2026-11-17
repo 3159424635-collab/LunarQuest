@@ -13,10 +13,10 @@ namespace LunarQuest
     {
         [Header("物理参数")]
         public float gravity = 1.62f;           // 月面重力
-        public float maxThrust = 30f;            // 最大反推推力 m/s²
-        public float thrustRate = 20f;           // 推力变化速率
+        public float maxThrust = 10f;     // TWR≈6.2            // 最大反推推力 m/s²
+        public float thrustRate = 5f;           // 推力变化速率
         public float rcsForce = 3f;              // 水平微调力
-        public float startAltitude = 2000f;      // 初始高度(米)
+        public float startAltitude = 500f;      // 初始高度(米)，约60秒游戏时长      // 初始高度(米)
         public float fuelCapacity = 100f;        // 燃料容量
         public float fuelBurnRate = 4f;          // 燃料消耗/秒（满推力时）
 
@@ -51,7 +51,7 @@ namespace LunarQuest
         public void ResetGame()
         {
             altitude = startAltitude;
-            verticalSpeed = -20f; // 初始下降速度
+            verticalSpeed = -15f; // 初始下降速度
             horizontalSpeed = 2f; // 初始水平漂移
             thrust = 0f;
             fuel = fuelCapacity;
