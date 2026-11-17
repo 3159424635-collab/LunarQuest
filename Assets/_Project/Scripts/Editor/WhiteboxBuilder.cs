@@ -869,6 +869,9 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             player.name = "Player";
             UnityEngine.Object.DestroyImmediate(player.GetComponent<CapsuleCollider>());
             player.tag = "Player";
+            // 隐藏胶囊网格——视觉由宇航员模型负责，物理由 CharacterController 负责
+            UnityEngine.Object.DestroyImmediate(player.GetComponent<MeshRenderer>());
+            UnityEngine.Object.DestroyImmediate(player.GetComponent<MeshFilter>());
             var cc = player.AddComponent<CharacterController>();
             cc.height = 1.8f;
             cc.radius = 0.35f;
