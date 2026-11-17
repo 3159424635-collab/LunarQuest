@@ -1042,31 +1042,19 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
         }
 
 
-        // 覆盖 GLB 模型的金属材质为非金属 URP Lit（解决"黄金熔化"观感）
+        // 展台模型材质：全部替换为哑光材质（彻底消除金属/金色观感）
         static void FixMetallicMaterials(GameObject go)
         {
             if (go == null) return;
-            var mat = LoadOrCreateMat("M_ExhibitModel", new Color(0.72f, 0.74f, 0.78f));
+            var mat = LoadOrCreateMat("M_ExhibitModel", new Color(0.55f, 0.57f, 0.62f));
+            var matDark = LoadOrCreateMat("M_ExhibitDark", new Color(0.20f, 0.22f, 0.26f));
             foreach (var r in go.GetComponentsInChildren<Renderer>(true))
             {
                 var mats = r.sharedMaterials;
                 for (int i = 0; i < mats.Length; i++)
                 {
-                    if (mats[i] == null) continue;
-                    // 检测高金属度（Sketchfab GLB 常见问题：metallic=1 导致金色）
-                    if (mats[i].HasProperty("_Metallic"))
-                    {
-                        float metallic = mats[i].GetFloat("_Metallic");
-                        if (metallic > 0.5f)
-                        {
-                            mats[i] = mat;
-                            continue;
-                        }
-                    }
-                    if (mats[i].HasProperty("_MetallicGlossmap") && mats[i].GetTexture("_MetallicGlossmap") != null)
-                    {
-                        mats[i] = mat;
-                    }
+                    // 全部替换——不检测金属度（检测不可靠，直接换最稳）
+                    mats[i] = i % 2 == 0 ? mat : matDark;
                 }
                 r.sharedMaterials = mats;
             }

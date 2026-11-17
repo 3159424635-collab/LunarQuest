@@ -122,8 +122,8 @@ namespace LunarQuest
 
         void SetupText(Text t, int size, FontStyle style, Color color, TextAnchor anchor)
         {
-            if (font != null) t.font = font;
-            else t.font = GetFont();
+            var safeFont = font != null ? font : GetFont();
+            if (safeFont != null) t.font = safeFont;
             t.fontSize = size;
             t.fontStyle = style;
             t.color = color;
@@ -145,8 +145,11 @@ namespace LunarQuest
 
         static Font GetFont()
         {
-            try { return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); }
-            catch { return Resources.GetBuiltinResource<Font>("Arial.ttf"); }
+            Font f = null;
+            try { f = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { }
+            if (f == null) try { f = Resources.GetBuiltinResource<Font>("Arial.ttf"); } catch { }
+            if (f == null) try { f = Resources.GetBuiltinResource<Font>("Verdana.ttf"); } catch { }
+            return f; // 可能返回 null，由调用方处理
         }
 
         static Sprite MakeDot()

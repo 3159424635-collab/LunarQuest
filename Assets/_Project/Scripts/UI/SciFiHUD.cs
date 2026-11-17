@@ -26,7 +26,7 @@ namespace LunarQuest
         void Awake()
         {
             I = this;
-            if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (font == null) { try { font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { } }
 
             var canvas = gameObject.AddComponent<Canvas>();
             Rect safe = Screen.safeArea;
