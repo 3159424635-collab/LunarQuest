@@ -154,14 +154,14 @@ namespace LunarQuest
                 GUI.Label(new Rect(moonX - 30, moonY + moonR + 5, 60, 18), "月球", sLabel);
 
                 // 轨迹线（地球到月球）
-                float lineY = earthY;
+                float orbitLineY = earthY;
                 GUI.color = new Color(0.3f, 0.5f, 0.8f, 0.3f);
-                GUI.DrawTexture(new Rect(earthX + earthR, lineY - 1, moonX - earthX - earthR - moonR, 2), texWhite);
+                GUI.DrawTexture(new Rect(earthX + earthR, orbitLineY - 1, moonX - earthX - earthR - moonR, 2), texWhite);
                 GUI.color = saved;
 
                 // 飞船图标（沿轨迹移动）
                 float shipX = Mathf.Lerp(earthX + earthR + 10, moonX - moonR - 10, transitProgress);
-                float shipY = lineY - 15 + Mathf.Sin(transitProgress * Mathf.PI) * 20; // 弧线
+                float shipY = orbitLineY - 15 + Mathf.Sin(transitProgress * Mathf.PI) * 20; // 弧线
                 // 飞船三角形
                 GUI.color = Color.white;
                 GUI.DrawTexture(new Rect(shipX - 5, shipY - 5, 10, 10), texWhite);
