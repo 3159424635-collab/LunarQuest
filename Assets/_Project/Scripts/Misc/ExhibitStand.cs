@@ -11,6 +11,7 @@ namespace LunarQuest
     {
         [TextArea] public string exhibitTitle = "展品";
         [TextArea(4, 8)] public string exhibitDesc = "介绍文本";
+        [HideInInspector] public Texture2D qrTexture;
 
         bool showing;
 

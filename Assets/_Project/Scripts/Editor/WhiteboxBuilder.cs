@@ -607,13 +607,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             if (!string.IsNullOrEmpty(miniPath))
                 PlaceModel(miniPath, miniSize, pos, _ => topY, $"ExhibitMini_{i}", false, false);
 
-            string[] qrTexs = { "QR_Apollo_LRV", "QR_Yutu_Rover", "QR_Luna25_Capsule" };
-            var qrTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                $"Assets/_Project/Art/Textures/QR/{qrTexs[i]}.png");
-            var screenMat = qrTex != null
-                ? new Material(Shader.Find("Universal Render Pipeline/Unlit")) { mainTexture = qrTex }
-                : LoadOrCreateMat("M_QRScreen", new Color(0.92f, 0.92f, 0.88f));
-            if (qrTex != null) AssetDatabase.CreateAsset(screenMat, $"Assets/_Project/Art/Materials/M_QR_{i}.mat");
+            // 二维码改为数据卡 UI 内嵌显示
             var screen = GameObject.CreatePrimitive(PrimitiveType.Cube);
             screen.name = $"QRScreen_{i}";
             screen.transform.position = new Vector3(pos.x, baseY + 3.2f, pos.z - 1.2f);
@@ -625,6 +619,9 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             stand.exhibitTitle = title;
             stand.exhibitDesc = desc;
             stand.prompt = $"按 E 查看：{title}";
+            string[] qrNames = { "QR_Apollo_LRV", "QR_Yutu_Rover", "QR_Luna25_Capsule" };
+            stand.qrTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                $"Assets/_Project/Art/Textures/QR/{qrNames[i]}.png");
         }
 
         // 广寒站主体：自建参数化基地（Blender 生成，米制原尺寸，穹顶+双舱段+走廊可进入）

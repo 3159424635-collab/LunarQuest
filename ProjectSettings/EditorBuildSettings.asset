@@ -15,4 +15,6 @@ EditorBuildSettings:
     path: Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity
     guid: c7e9720f2f3a9684c826485d95a44802
   m_configObjects:
+    UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: 4ce0ae86b74cab547b4e630b695e1bb2, type: 2}
+    com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: 5eb08c981872f2f48b2e1da2fc29e147, type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 05f4dcd02f6f21643b112ab8b34dd814, type: 2}
