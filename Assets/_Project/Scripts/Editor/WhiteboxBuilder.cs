@@ -608,13 +608,6 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 PlaceModel(miniPath, miniSize, pos, _ => topY, $"ExhibitMini_{i}", false, false);
 
             // 二维码改为数据卡 UI 内嵌显示
-            var screen = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            screen.name = $"QRScreen_{i}";
-            screen.transform.position = new Vector3(pos.x, baseY + 3.2f, pos.z - 1.2f);
-            screen.transform.localScale = new Vector3(1.4f, 1.1f, 0.12f);
-            screen.GetComponent<Renderer>().sharedMaterial = screenMat;
-            UnityEngine.Object.DestroyImmediate(screen.GetComponent<BoxCollider>());
-
             var stand = ped.AddComponent<ExhibitStand>();
             stand.exhibitTitle = title;
             stand.exhibitDesc = desc;
