@@ -102,7 +102,7 @@ namespace LunarQuest.EditorTools
                 Bounds vb = default; bool vf = true;
                 foreach (var vr in vab.GetComponentsInChildren<Renderer>())
                 { if (vf) { vb = vr.bounds; vf = false; } else vb.Encapsulate(vr.bounds); }
-                float vs = 60f / Mathf.Max(vb.size.y, 0.01f);
+                float vs = Mathf.Min(60f / Mathf.Max(vb.size.y, 0.01f), 80f / Mathf.Max(Mathf.Max(vb.size.x, vb.size.z), 0.01f)); // 高度和宽度都限制
                 vab.transform.localScale = Vector3.one * vs;
                 vb = default; vf = true;
                 foreach (var vr in vab.GetComponentsInChildren<Renderer>())
