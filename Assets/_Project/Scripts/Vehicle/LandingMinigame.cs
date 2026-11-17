@@ -16,12 +16,14 @@ namespace LunarQuest
         public float safeHorizontalSpeed = 3f;
         public float safeStress = 0.8f;
         public Camera mainCam;
+        public GameObject dustEffect; // 引擎扬尘粒子
 
         float altitude, vSpeed, hSpeed, thrust, fuel, stress;
         bool playing, landed, crashed;
         float gameTimer;
         int phase;
         float phaseTimer, transitProgress;
+        float landingShake;
 
         static readonly Color CBg = new Color(0f, 0.05f, 0.02f, 0.92f);
         static readonly Color CDim = new Color(0f, 0.35f, 0.15f);
@@ -64,10 +66,33 @@ namespace LunarQuest
             vSpeed += (thrust - gravity) * Time.deltaTime;
             altitude += vSpeed * Time.deltaTime;
             stress = Mathf.Clamp01(Mathf.Max(Mathf.Abs(vSpeed) / (safeVerticalSpeed * 2), Mathf.Abs(hSpeed) / (safeHorizontalSpeed * 2)));
-            if (mainCam) mainCam.transform.position = new Vector3(hSpeed * 2f, Mathf.Lerp(-29.5f, 0, altitude / startAltitude), 0);
+            if (mainCam)
+            {
+                Vector3 basePos = new Vector3(hSpeed * 2f, Mathf.Lerp(-29.5f, 0, altitude / startAltitude), 0);
+                // 推力震动（推力越大越抖）
+                float thrustShake = (thrust / maxThrust) * 0.08f;
+                // 着陆震动（衰减）
+                if (landingShake > 0) landingShake = Mathf.MoveTowards(landingShake, 0, Time.deltaTime * 0.5f);
+                float totalShake = thrustShake + landingShake;
+                mainCam.transform.position = basePos + new Vector3(
+                    Random.Range(-totalShake, totalShake),
+                    Random.Range(-totalShake, totalShake),
+                    Random.Range(-totalShake, totalShake));
+            }
+            // 扬尘：高度<50m且有推力时启用
+            if (dustEffect != null)
+            {
+                bool shouldDust = altitude < 50f && thrust > 2f && playing;
+                if (shouldDust && !dustEffect.activeSelf) dustEffect.SetActive(true);
+                else if (!shouldDust && dustEffect.activeSelf) dustEffect.SetActive(false);
+            }
+
+            // 着陆震动
             if (altitude <= 0)
             {
-                altitude = 0; playing = false;
+                altitude = 0;
+                if (playing) landingShake = Mathf.Abs(vSpeed) * 0.05f; // 震动强度∝着陆速度
+                playing = false;
                 bool ok = Mathf.Abs(vSpeed) <= safeVerticalSpeed && Mathf.Abs(hSpeed) <= safeHorizontalSpeed;
                 landed = ok; crashed = !ok;
                 if (QuestManager.I) QuestManager.I.FireEvent(ok ? "landing_succeeded" : "landing_failed");
