@@ -91,26 +91,28 @@ namespace LunarQuest.EditorTools
             for (int i = 0; i < fences.Length; i++)
                 PlaceKenney("metalFence", 24f, fences[i].p, Flat, "PadFence_" + i, false, new Vector3(0f, fences[i].r, 0f));
 
-            // ---- VAB 垂直总装厂房（远景地标） ----
-            var vabGo = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/_Project/Art/Models/Sketchfab/assembly_building/scene.gltf");
-            if (vabGo != null)
-            {
-                var vab = UnityEngine.Object.Instantiate(vabGo);
-                vab.name = "VAB";
-                // 高度归一化到 60m（原始模型是毫米单位，直接乘缩放会变成百万米级）
-                Bounds vb = default; bool vf = true;
-                foreach (var vr in vab.GetComponentsInChildren<Renderer>())
-                { if (vf) { vb = vr.bounds; vf = false; } else vb.Encapsulate(vr.bounds); }
-                float vs = Mathf.Min(60f / Mathf.Max(vb.size.y, 0.01f), 80f / Mathf.Max(Mathf.Max(vb.size.x, vb.size.z), 0.01f)); // 高度和宽度都限制
-                vab.transform.localScale = Vector3.one * vs;
-                vb = default; vf = true;
-                foreach (var vr in vab.GetComponentsInChildren<Renderer>())
-                { if (vf) { vb = vr.bounds; vf = false; } else vb.Encapsulate(vr.bounds); }
-                vab.transform.position = new Vector3(-60f, -vb.min.y, -65f);
-                FixMetallicMaterials(vab);
-                Report.AppendLine("[S1] VAB 总装厂房");
-            }
+            // ---- VAB 垂直总装厂房（程序化立方体，正确比例） ----
+            var vabBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            vabBody.name = "VAB";
+            vabBody.transform.position = new Vector3(-60f, 25f, -65f);
+            vabBody.transform.localScale = new Vector3(45f, 50f, 30f);
+            vabBody.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_VAB", new Color(0.72f, 0.73f, 0.76f));
+            // VAB 顶部装饰条
+            var vabTrim = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            vabTrim.name = "VAB_Roof";
+            vabTrim.transform.position = new Vector3(-60f, 50.5f, -65f);
+            vabTrim.transform.localScale = new Vector3(46f, 1f, 31f);
+            vabTrim.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_VABRoof", new Color(0.5f, 0.52f, 0.56f));
+            // VAB 大门
+            var vabDoor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            vabDoor.name = "VAB_Door";
+            vabDoor.transform.position = new Vector3(-60f, 20f, -49.8f);
+            vabDoor.transform.localScale = new Vector3(20f, 40f, 0.3f);
+            vabDoor.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_VABDoor", new Color(0.25f, 0.27f, 0.32f));
+            UnityEngine.Object.DestroyImmediate(vabTrim.GetComponent<BoxCollider>());
+            UnityEngine.Object.DestroyImmediate(vabDoor.GetComponent<BoxCollider>());
+            Report.AppendLine("[S1] VAB 总装厂房 45x50x30m");
+
             // ---- 燃料储罐区（3个） ----
             var tankGo = AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/_Project/Art/Models/Sketchfab/fuel_tank/scene.gltf");
