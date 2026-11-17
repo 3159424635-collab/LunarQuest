@@ -18,6 +18,7 @@ namespace LunarQuest
 
         [Header("白盒调试显示")]
         public bool showDebugHud = false;
+        void OnEnable() => showDebugHud = false; // 强制关闭调试灰框
 
         PlayerInteractor interactor;
         RoverController rover;

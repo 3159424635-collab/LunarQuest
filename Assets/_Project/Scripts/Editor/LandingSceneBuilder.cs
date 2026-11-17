@@ -34,61 +34,34 @@ namespace LunarQuest.EditorTools
             var matMoon = LM("M_MoonLanding", new Color(0.45f, 0.44f, 0.42f));
             var matTarget = LM("M_LandingTarget", new Color(0.1f, 0.8f, 0.2f));
 
-            // ---- 月面：与 S4 相同的 Terrain 系统（统一视觉） ----
-            var td = new TerrainData { heightmapResolution = 513, size = new Vector3(500f, 60f, 500f) };
-            var heights = new float[513, 513];
-            for (int z = 0; z < 513; z++)
-                for (int x = 0; x < 513; x++)
+            // ---- 月面：与 S4 完全相同的 Terrain（同参数同贴图同世界位置，保证两场景月面一致） ----
+            var td = new TerrainData { heightmapResolution = 1025, size = new Vector3(500f, 100f, 500f) };
+            var hts = new float[1025, 1025];
+            for (int z = 0; z < 1025; z++)
+                for (int x = 0; x < 1025; x++)
                 {
-                    float wx = x / 512f * 500f - 250f;
-                    float wz = z / 512f * 500f - 250f;
-                    float h = 8f * Mathf.PerlinNoise(wx * 0.01f + 50f, wz * 0.01f + 50f)
-                             + 3f * Mathf.PerlinNoise(wx * 0.04f + 150f, wz * 0.04f + 150f)
-                             + 1f * Mathf.PerlinNoise(wx * 0.15f + 250f, wz * 0.15f + 250f);
-                    // 着陆区平坦
-                    float dCenter = Mathf.Sqrt(wx * wx + wz * wz);
-                    float flat = 1f - Mathf.SmoothStep(30f, 60f, dCenter);
-                    h = Mathf.Lerp(h, 5f, flat);
-                    heights[z, x] = h / 60f;
+                    float wx = x / 1024f * 500f - 250f;
+                    float wz = z / 1024f * 500f - 250f;
+                    float h = 2f
+                        + 3.0f * Mathf.PerlinNoise(wx * 0.008f + 100f, wz * 0.008f + 100f)
+                        - 1.5f
+                        + 1.2f * Mathf.PerlinNoise(wx * 0.03f + 200f, wz * 0.03f + 200f)
+                        + 0.4f * Mathf.PerlinNoise(wx * 0.12f + 300f, wz * 0.12f + 300f);
+                    h -= Bowl(wx, wz, 80f, 140f, 30f, 7f);
+                    h -= Bowl(wx, wz, -150f, -60f, 25f, 5f);
+                    h -= Bowl(wx, wz, -40f, -170f, 40f, 6f);
+                    h = Mathf.Lerp(h, 2f, FlatF(Dist2(wx, wz, -8f, 188f), 80f));
+                    h = Mathf.Lerp(h, 2f, FlatF(Dist2(wx, wz, 120f, -40f), 28f));
+                    hts[z, x] = h / 100f;
                 }
-            td.SetHeights(0, 0, heights);
-
-            // 与 S4 相同的 NASA LROC 贴图
-            var lrocTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
+            td.SetHeights(0, 0, hts);
+            var lroc = AssetDatabase.LoadAssetAtPath<Texture2D>(
                 "Assets/_Project/Cinematics/Module4/Textures/NASA_Moon_LROC.jpg");
-            var layer = new TerrainLayer
-            {
-                diffuseTexture = lrocTex,
-                tileSize = new Vector2(40f, 40f),
-            };
-            td.terrainLayers = new[] { layer };
-
-            var terrainGO = Terrain.CreateTerrainGameObject(td);
-            terrainGO.name = "LandingTerrain_Physics"; // 只做碰撞，不渲染
-            terrainGO.transform.position = new Vector3(-250f, -35f, -250f);
-            // 隐藏 Terrain 的视觉（只保留碰撞）
-            var tCollider = terrainGO.GetComponent<TerrainCollider>();
-            if (tCollider != null) tCollider.enabled = true;
-            foreach (var mr in terrainGO.GetComponentsInChildren<MeshRenderer>())
-                mr.enabled = false;
-
-            // 阿波罗 11 着陆点模型（视觉主地形，NASA 数据）
-            // 注意：glTFast 资产用 Object.Instantiate 深拷贝（PrefabUtility.InstantiatePrefab 对它只生成空壳）
-            var apollo = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/_Project/Art/Models/Sketchfab/apollo11_landing_site/scene.gltf");
-            if (apollo != null)
-            {
-                var am = Object.Instantiate(apollo);
-                am.name = "Apollo11Terrain";
-                am.transform.position = new Vector3(0, -30f, 0);
-                am.transform.localScale = Vector3.one * 5f;
-                int meshCount = am.GetComponentsInChildren<MeshFilter>().Length;
-                Debug.Log($"[LandingSceneBuilder] Apollo 11 地形已放置（含 {meshCount} 个网格）");
-            }
-            else
-            {
-                Debug.LogError("[LandingSceneBuilder] Apollo 模型加载失败！");
-            }
+            var tl = new TerrainLayer { diffuseTexture = lroc, tileSize = new Vector2(40f, 40f) };
+            td.terrainLayers = new[] { tl };
+            var tgo = Terrain.CreateTerrainGameObject(td);
+            tgo.name = "Terrain";
+            tgo.transform.position = new Vector3(-250f, 0f, -250f);
 
             // 着陆目标（绿色发光圈）
             var tgt = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -169,10 +142,7 @@ namespace LunarQuest.EditorTools
             qm.database = AssetDatabase.LoadAssetAtPath<TextAsset>(
                 "Assets/_Project/Content/Characters/dialogue.json");
             qm.startEvent = "orbit_complete";
-            var sf = AssetDatabase.LoadAssetAtPath<Font>(
-                "Assets/_Project/UI/Fonts/NotoSansCJKsc-Regular.otf");
-            var sci = new GameObject("SciFiHUD").AddComponent<SciFiHUD>();
-            sci.font = sf;
+            // SciFiHUD 不加入 S3——着陆小游戏自带仪表，避免底部面板重合
 
             // ---- 保存 ----
             const string sp = "Assets/_Project/Scenes/S3_Landing.unity";
@@ -188,6 +158,17 @@ namespace LunarQuest.EditorTools
                 EditorBuildSettings.scenes = list.ToArray();
             }
         }
+
+
+        static float Bowl(float x, float z, float cx, float cz, float r, float d)
+        {
+            float dd = Dist2(x, z, cx, cz);
+            if (dd >= r * 1.9f) return 0f;
+            if (dd < r) return d * (0.55f + 0.45f * Mathf.Cos(Mathf.PI * dd / r));
+            return -d * 0.2f * Mathf.Sin(Mathf.PI * (dd - r) / (0.9f * r));
+        }
+        static float FlatF(float d, float r) => 1f - Mathf.SmoothStep(r * 0.65f, r, d);
+        static float Dist2(float x, float z, float cx, float cz) => Mathf.Sqrt((x - cx) * (x - cx) + (z - cz) * (z - cz));
 
         static Material LM(string n, Color c)
         {

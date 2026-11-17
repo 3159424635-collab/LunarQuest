@@ -116,7 +116,7 @@ namespace LunarQuest
             qrHintText.text = "↑ 手机扫码查看 AR 模型";
 
             // ---- 左上信息 ----
-            var hud = SciFiGUI.Rect("Readout", canvas.transform, new Vector2(0f, 1f), new Vector2(16f, -16f));
+            var hud = SciFiGUI.Rect("Readout", canvas.transform, new Vector2(0f, 1f), new Vector2(safe.x + 12f, -safe.y - 12f));
             hud.sizeDelta = new Vector2(Mathf.Min(safe.width * 0.28f, 300f), 72f);
             var hudPanel = hud.gameObject.AddComponent<Image>();
             hudPanel.sprite = panelSprite;

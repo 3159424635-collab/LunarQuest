@@ -733,6 +733,14 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             Tunnel("GateW_Ceil", new Vector3(-53f, by + 9.4f, 190f), new Vector3(10f, 0.16f, 18.6f));
             Tunnel("GateW_N", new Vector3(-53f, by + 4.7f, 199.3f), new Vector3(10f, 9.4f, 0.18f));
             Tunnel("GateW_S", new Vector3(-53f, by + 4.7f, 180.7f), new Vector3(10f, 9.4f, 0.18f));
+            // 基地基座平台：混凝土底盘填满玻璃罩投影，消除任何悬空缝隙
+            float padY = ground(new Vector3(4f, 0f, 190f));
+            var pad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            pad.name = "BaseFoundation";
+            pad.transform.position = new Vector3(4f, padY + 0.15f, 190f);
+            pad.transform.localScale = new Vector3(112f, 0.3f, 112f); // 直径112m 盖住 r52 罩+裙边
+            pad.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_PadConcrete", new Color(0.42f, 0.42f, 0.40f));
+            Report.AppendLine("[基地] 混凝土基座平台 112m 直径已放置（消除悬空）");
             Report.AppendLine("[基地] 玻璃半球防护罩；南人气闸双道门(x=+4实测对位)+西车闸大门（glTF X轴实测镜像已补偿）");
         }
 
