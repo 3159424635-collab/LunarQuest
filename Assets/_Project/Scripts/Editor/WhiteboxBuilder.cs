@@ -45,7 +45,7 @@ namespace LunarQuest.EditorTools
             EnsureFolders();
             FixKenneyMaterials();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-
+            Physics.gravity = new Vector3(0f, -9.81f, 0f); // 地球重力
             // 地球白天氛围：程序化蓝天 + 暖阳光
             var sun = new GameObject("Sun").AddComponent<Light>();
             sun.type = LightType.Directional;
@@ -64,10 +64,35 @@ namespace LunarQuest.EditorTools
             RenderSettings.skybox = sky;
 
             // 草原地面 800×800
-            var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            ground.name = "Ground";
-            ground.transform.localScale = new Vector3(80f, 1f, 80f);
-            ground.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_EarthGround", new Color(0.42f, 0.50f, 0.34f));
+            // 地形：Terrain 起伏草原
+            var std = new TerrainData { heightmapResolution = 513, size = new Vector3(800f, 15f, 800f) };
+            var shts = new float[513, 513];
+            for (int z = 0; z < 513; z++)
+                for (int x = 0; x < 513; x++)
+                {
+                    float wx = x / 512f * 800f - 400f;
+                    float wz = z / 512f * 800f - 400f;
+                    float h = 1f * Mathf.PerlinNoise(wx * 0.01f + 50f, wz * 0.01f + 50f)
+                             + 0.3f * Mathf.PerlinNoise(wx * 0.05f + 150f, wz * 0.05f + 150f);
+                    // 发射区+指挥区+观景区压平
+                    float d1 = Mathf.Sqrt(wx * wx + (wz + 46f) * (wz + 46f));
+                    float d2 = Mathf.Sqrt((wx - 38f) * (wx - 38f) + (wz + 20f) * (wz + 20f));
+                    float d3 = Mathf.Sqrt(wx * wx + (wz - 15f) * (wz - 15f));
+                    float flat = Mathf.Max(FlatF2(d1, 80f), Mathf.Max(FlatF2(d2, 40f), FlatF2(d3, 30f)));
+                    h = Mathf.Lerp(h, 0f, flat);
+                    shts[z, x] = h / 15f;
+                }
+            std.SetHeights(0, 0, shts);
+            var earthLayer = new TerrainLayer
+            {
+                diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                    "Assets/_Project/Cinematics/Module4/Textures/NASA_Earth_BlueMarble.jpg"),
+                tileSize = new Vector2(100f, 100f),
+            };
+            std.terrainLayers = new[] { earthLayer };
+            var stgo = Terrain.CreateTerrainGameObject(std);
+            stgo.name = "EarthTerrain";
+            stgo.transform.position = new Vector3(-400f, 0f, -400f);
             float Flat(Vector3 p) => 0f;
 
             // 发射台基座
@@ -154,9 +179,10 @@ namespace LunarQuest.EditorTools
             PlaceKenney("computer-wide", 2.6f, new Vector3(38f, 0f, -14f), Flat, "Console_C", false, null);
 
             // 林岚与玩家
-            PlaceNpc("ground_flight_controller", "林岚_飞控", new Vector3(33f, 0f, -13f), Flat,
+            PlaceNpc("ground_flight_controller", "林岚_飞控", new Vector3(35f, 0f, -10f), Flat,
                 "欢迎加入任务。跟我来，先熟悉操作，再去看发射。");
             var player = BuildPlayer(new Vector3(35f, 0f, -5f), Flat);
+            player.GetComponent<FirstPersonController>().gravityScale = 1f; // 地球重力
             var sciFont1 = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/NotoSansCJKsc-Regular.otf");
             var sci1 = new GameObject("SciFiHUD").AddComponent<SciFiHUD>();
             sci1.font = sciFont1;
@@ -166,7 +192,7 @@ namespace LunarQuest.EditorTools
             qm1.database = AssetDatabase.LoadAssetAtPath<TextAsset>(
                 "Assets/_Project/Content/Characters/dialogue.json");
             qm1.startEvent = "launch_tutorial_start";
-            player.GetComponent<HUDController>().SetQuest("走近飞控林岚按 E 交谈，完成发射前检查");
+            player.GetComponent<HUDController>().SetQuest("【任务1/5】走近林岚按 E 交谈，学习基本操作");
 
             const string scenePath = "Assets/_Project/Scenes/S1_LaunchSite.unity";
             EditorSceneManager.SaveScene(scene, scenePath);
@@ -922,6 +948,12 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
         }
 
         // 陨石坑剖面：坑内余弦碗形下沉，坑沿一圈低矮隆起
+        static float FlatF2(float d, float r)
+        {
+            float t = Mathf.Clamp01((d - r * 0.5f) / (r * 0.5f));
+            return 1f - t * t * (3f - 2f * t);
+        }
+
         static float Bowl(float x, float z, Vector2 c, float r, float d)
         {
             float dd = Dist(x, z, c);
