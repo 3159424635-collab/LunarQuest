@@ -193,7 +193,6 @@ namespace LunarQuest
             Rect panel = new Rect((sw - panelW) / 2, panelY, panelW, panelH);
 
             // 半透明背景
-            Color saved = GUI.color;
             GUI.color = new Color(0, 0.02f, 0.05f, 0.85f);
             GUI.DrawTexture(panel, texWhite);
             GUI.color = saved;
