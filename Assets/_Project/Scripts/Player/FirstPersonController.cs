@@ -102,6 +102,20 @@ namespace LunarQuest
 
             verticalVelocity += Gravity * Time.deltaTime;
             cc.Move((worldMove + Vector3.up * verticalVelocity) * Time.deltaTime);
+
+            // 第三人称动画：移动时播 walk，静止时播 idle
+            if (thirdPersonBody != null && thirdPersonBody.activeSelf)
+            {
+                var anim = thirdPersonBody.GetComponent<Animator>();
+                if (anim != null)
+                {
+                    bool moving = worldMove.magnitude > 0.5f;
+                    string cur = moving ? "walk" : "idle";
+                    var state = anim.GetCurrentAnimatorStateInfo(0);
+                    if (!state.IsName(cur))
+                        anim.CrossFade(cur, 0.2f);
+                }
+            }
         }
     }
 }

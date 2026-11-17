@@ -177,7 +177,7 @@ namespace LunarQuest.EditorTools
             float Ground(Vector3 p) => terrain.SampleHeight(p) + terrain.transform.position.y;
 
             var player = BuildPlayer(new Vector3(0f, 0f, 112f), Ground);
-            BuildRover(new Vector3(10f, 0f, 168f), Ground, player.transform);
+            BuildRover(new Vector3(12f, 0f, 118f), Ground, player.transform); // 罩外南侧，出门即达
             BuildKenneyBase(Ground);
             BuildExhibitHall(Ground);
             BuildLighting(Ground);
@@ -186,7 +186,7 @@ namespace LunarQuest.EditorTools
             BuildAirlockPortal(new Vector3(-58f, 0f, 190f), 90f, 18f, 9.2f, Ground, "Portal_W");
             PlaceNpc("base_coordinator", "周航_协调员", new Vector3(8f, 0f, 164f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
             PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(4f, 0f, 181f), Ground, "样本先放我这里，参观完科普厅再走。");
-            PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(14f, 0f, 172f), Ground, "车就在外面，月面路滑，慢点开。");
+            PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(16f, 0f, 116f), Ground, "车就在外面，月面路滑，慢点开。");
             BuildSampleRocks(Ground);
             BuildRockField(Ground);
             BuildMinimap(player.transform);
@@ -906,6 +906,26 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 body.transform.localPosition += Vector3.up * ((player.transform.position.y - 0.9f) - bb.min.y);
                 body.SetActive(false);
                 player.GetComponent<FirstPersonController>().thirdPersonBody = body;
+                // 动画控制器：idle / walk 两个状态
+                var pAnim = body.GetComponent<Animator>() ?? body.AddComponent<Animator>();
+                string pCtrlPath = "Assets/_Project/Art/Animations/AC_Player_Locomotion.controller";
+                var pCtrl = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(pCtrlPath);
+                if (pCtrl == null)
+                {
+                    var newCtrl = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(pCtrlPath);
+                    AnimationClip pIdle = null, pWalk = null;
+                    foreach (var o in AssetDatabase.LoadAllAssetsAtPath(CharDir + "/player_astronaut.glb"))
+                        if (o is AnimationClip pc)
+                        {
+                            string pn = pc.name.ToLower();
+                            if (pn.Contains("idle") && pIdle == null) pIdle = pc;
+                            if (pn.Contains("walk") && pWalk == null) pWalk = pc;
+                        }
+                    if (pIdle != null) { TrySetLoop(pIdle); newCtrl.AddMotion(pIdle).name = "idle"; }
+                    if (pWalk != null) { TrySetLoop(pWalk); newCtrl.AddMotion(pWalk).name = "walk"; }
+                    pCtrl = newCtrl;
+                }
+                pAnim.runtimeAnimatorController = pCtrl;
             }
             Report.AppendLine("[玩家] 出生于广寒站中央；第一人称 + E 交互 + OnGUI 调试 HUD + V 第三人称");
             return player;
@@ -1158,6 +1178,25 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             }
             EnsureState("idle", idle);
             EnsureState("talk", talk);
+            // 加更多动作状态（角色包提供了 8 个 NPC 动作）
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(glbPath))
+            {
+                if (!(o is AnimationClip c)) continue;
+                string cn = c.name.ToLower();
+                if (cn == (idle != null ? idle.name.ToLower() : "") || cn == (talk != null ? talk.name.ToLower() : "")) continue;
+                string stateName = null;
+                if (cn.Contains("wave")) stateName = "wave";
+                else if (cn.Contains("point")) stateName = "point";
+                else if (cn.Contains("sample")) stateName = "sample";
+                else if (cn.Contains("receive")) stateName = "receive";
+                else if (cn.Contains("tablet")) stateName = "tablet";
+                else if (cn.Contains("walk")) stateName = "walk";
+                if (stateName != null)
+                {
+                    TrySetLoop(c);
+                    EnsureState(stateName, c);
+                }
+            }
             return ctrl;
         }
 
