@@ -1363,6 +1363,8 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             if (File.Exists(showcase)) list.Add(new EditorBuildSettingsScene(showcase, true));
             const string s1 = "Assets/_Project/Scenes/S1_LaunchSite.unity";
             if (File.Exists(s1)) list.Add(new EditorBuildSettingsScene(s1, true));
+            const string s3 = "Assets/_Project/Scenes/S3_Landing.unity";
+            if (File.Exists(s3)) list.Add(new EditorBuildSettingsScene(s3, true));
             list.Add(new EditorBuildSettingsScene(s4Path, true));
             EditorBuildSettings.scenes = list.ToArray();
         }

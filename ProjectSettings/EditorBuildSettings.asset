@@ -12,6 +12,9 @@ EditorBuildSettings:
     path: Assets/_Project/Scenes/S1_LaunchSite.unity
     guid: 9a1e43354fdedc140b4b2a7bea64f557
   - enabled: 1
+    path: Assets/_Project/Scenes/S3_Landing.unity
+    guid: 45e043ad2ee63e24a8b0851b5124686d
+  - enabled: 1
     path: Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity
     guid: c7e9720f2f3a9684c826485d95a44802
   m_configObjects:
