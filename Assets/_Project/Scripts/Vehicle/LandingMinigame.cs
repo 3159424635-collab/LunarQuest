@@ -149,8 +149,8 @@ namespace LunarQuest
 
         void DrawLanding(float sw, float sh)
         {
-            float altW = 180, altH = Mathf.Min(sh * 0.55f, 360);
-            float altX = sw * 0.07f, altY = (sh - altH) / 2; // 收进中央安全区
+            float altW = 200, altH = Mathf.Min(sh * 0.65f, 420);
+            float altX = 15, altY = (sh - altH) / 2;
             var ar = new Rect(altX, altY, altW, altH);
             Draw(ar, CBg); Border(ar, CBright);
             Label(altX, altY - 22, altW, 18, "◤ 高度剖面 ◢", sS);
@@ -183,8 +183,8 @@ namespace LunarQuest
             Line(altX + 10, safeY, altX + altW - 10, safeY, new Color(0f, 0.8f, 0.3f, 0.5f));
             Label(altX + 10, safeY - 14, altW - 20, 12, "◄ 安全区 ►", sT);
 
-            float rad = Mathf.Min(sh * 0.18f, 120);
-            float rcx = sw * 0.90f, rcy = sh / 2; // 右侧也收进安全区
+            float rad = Mathf.Min(sh * 0.2f, 140);
+            float rcx = sw - rad - 20, rcy = sh / 2;
             var rr = new Rect(rcx - rad - 15, rcy - rad - 25, rad * 2 + 30, rad * 2 + 50);
             Draw(rr, CBg); Border(rr, CBright);
             Label(rcx - 60, rcy - rad - 22, 120, 16, "◤ 水平雷达 ◢", sS);
@@ -202,7 +202,7 @@ namespace LunarQuest
             float blx = rcx + hSpeed * 20;
             if (Time.time % 0.5f < 0.3f) Draw(new Rect(blx - 2, rcy - 2, 4, 4), CWhite);
 
-            float pw = Mathf.Min(sw * 0.72f, 560), ph = 76;
+            float pw = Mathf.Min(sw * 0.85f, 600), ph = 80;
             var pr = new Rect((sw - pw) / 2, sh - ph - 10, pw, ph);
             Draw(pr, CBg); Border(pr, CBright);
             float cw = pw / 5;
