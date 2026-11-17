@@ -64,8 +64,25 @@ namespace LunarQuest.EditorTools
             td.terrainLayers = new[] { layer };
 
             var terrainGO = Terrain.CreateTerrainGameObject(td);
-            terrainGO.name = "LandingTerrain";
+            terrainGO.name = "LandingTerrain_Physics"; // 只做碰撞，不渲染
             terrainGO.transform.position = new Vector3(-250f, -35f, -250f);
+            // 隐藏 Terrain 的视觉（只保留碰撞）
+            var tCollider = terrainGO.GetComponent<TerrainCollider>();
+            if (tCollider != null) tCollider.enabled = true;
+            foreach (var mr in terrainGO.GetComponentsInChildren<MeshRenderer>())
+                mr.enabled = false;
+
+            // 阿波罗 11 着陆点模型（视觉主地形，NASA 数据）
+            var apollo = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/_Project/Art/Models/Sketchfab/apollo11_landing_site/scene.gltf");
+            if (apollo != null)
+            {
+                var am = (GameObject)PrefabUtility.InstantiatePrefab(apollo);
+                am.name = "Apollo11Terrain";
+                am.transform.position = new Vector3(0, -30f, 0);
+                am.transform.localScale = Vector3.one * 5f;
+                Debug.Log("[LandingSceneBuilder] ✓ Apollo 11 着陆点地形已放置（视觉层）");
+            }
 
             // 着陆目标（绿色发光圈）
             var tgt = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
