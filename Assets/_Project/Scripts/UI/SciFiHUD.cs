@@ -29,6 +29,7 @@ namespace LunarQuest
             if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
             var canvas = gameObject.AddComponent<Canvas>();
+            Rect safe = Screen.safeArea;
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 90;
             canvas.pixelPerfect = true;
@@ -39,7 +40,7 @@ namespace LunarQuest
 
             // ---- 字幕（底部居中，宽度限制在屏宽 80% 以内） ----
             var sub = SciFiGUI.Rect("Subtitle", canvas.transform, new Vector2(0.5f, 0f), new Vector2(0f, 90f));
-            sub.sizeDelta = new Vector2(Mathf.Min(800f, Screen.width * 0.8f), 90f);
+            sub.sizeDelta = new Vector2(Mathf.Min(safe.width * 0.7f, 700f), 84f);
             subGroup = sub.gameObject.AddComponent<CanvasGroup>();
             subGroup.alpha = 0f;
             subGroup.blocksRaycasts = false;
@@ -71,8 +72,8 @@ namespace LunarQuest
 
             // ---- 数据卡（右侧，含二维码） ----
             cardRect = SciFiGUI.Rect("Card", canvas.transform, new Vector2(1f, 0.5f), new Vector2(-20f, 0f));
-            float cardW = Mathf.Min(440f, Screen.width * 0.42f);
-            float cardH = Mathf.Min(560f, Screen.height * 0.85f);
+            float cardW = Mathf.Min(safe.width * 0.35f, 380f);
+            float cardH = Mathf.Min(safe.height * 0.8f, 500f);
             cardRect.sizeDelta = new Vector2(cardW, cardH);
             cardGroup = cardRect.gameObject.AddComponent<CanvasGroup>();
             cardGroup.alpha = 0f;
@@ -116,7 +117,7 @@ namespace LunarQuest
 
             // ---- 左上信息 ----
             var hud = SciFiGUI.Rect("Readout", canvas.transform, new Vector2(0f, 1f), new Vector2(16f, -16f));
-            hud.sizeDelta = new Vector2(Mathf.Min(340f, Screen.width * 0.35f), 78f);
+            hud.sizeDelta = new Vector2(Mathf.Min(safe.width * 0.28f, 300f), 72f);
             var hudPanel = hud.gameObject.AddComponent<Image>();
             hudPanel.sprite = panelSprite;
             hudPanel.type = Image.Type.Sliced;
@@ -184,7 +185,7 @@ namespace LunarQuest
             {
                 int idx = i;
                 var chip = SciFiGUI.Rect("Choice_" + i, choicesRoot, Vector2.zero, Vector2.zero);
-                chip.sizeDelta = new Vector2(Mathf.Min(520f, Screen.width * 0.5f), 42f);
+                chip.sizeDelta = new Vector2(Mathf.Min(safe.width * 0.45f, 440f), 40f);
                 var img = chip.gameObject.AddComponent<Image>();
                 img.sprite = panelSprite;
                 img.type = Image.Type.Sliced;

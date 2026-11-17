@@ -23,6 +23,7 @@ namespace LunarQuest
         void Awake()
         {
             var canvas = gameObject.AddComponent<Canvas>();
+            Rect safe = Screen.safeArea;
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 100;
             canvas.pixelPerfect = true;

@@ -605,7 +605,8 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             Bounds pb = LocalBounds(ped.transform);
             float topY = pb.max.y + 0.05f;
             if (!string.IsNullOrEmpty(miniPath))
-                PlaceModel(miniPath, miniSize, pos, _ => topY, $"ExhibitMini_{i}", false, false);
+                var mini = PlaceModel(miniPath, miniSize, pos, _ => topY, $"ExhibitMini_{i}", false, false);
+            FixMetallicMaterials(mini);
 
             // 二维码改为数据卡 UI 内嵌显示
             var stand = ped.AddComponent<ExhibitStand>();
@@ -1016,6 +1017,37 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             m.SetColor("_BaseColor", color);
             AssetDatabase.CreateAsset(m, p);
             return m;
+        }
+
+
+        // 覆盖 GLB 模型的金属材质为非金属 URP Lit（解决"黄金熔化"观感）
+        static void FixMetallicMaterials(GameObject go)
+        {
+            if (go == null) return;
+            var mat = LoadOrCreateMat("M_ExhibitModel", new Color(0.72f, 0.74f, 0.78f));
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null) continue;
+                    // 检测高金属度（Sketchfab GLB 常见问题：metallic=1 导致金色）
+                    if (mats[i].HasProperty("_Metallic"))
+                    {
+                        float metallic = mats[i].GetFloat("_Metallic");
+                        if (metallic > 0.5f)
+                        {
+                            mats[i] = mat;
+                            continue;
+                        }
+                    }
+                    if (mats[i].HasProperty("_MetallicGlossmap") && mats[i].GetTexture("_MetallicGlossmap") != null)
+                    {
+                        mats[i] = mat;
+                    }
+                }
+                r.sharedMaterials = mats;
+            }
         }
 
         static GameObject PlaceModel(string path, float targetMax, Vector3 pos,
