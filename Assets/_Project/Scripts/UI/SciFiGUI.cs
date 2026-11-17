@@ -47,6 +47,14 @@ namespace LunarQuest
             return r;
         }
 
+        // 带轴心的版本：pivot 决定锚点对应面板的哪个角/边（如 (1,0.5)=面板右缘贴锚点向左延伸）
+        public static RectTransform RectP(string name, Transform parent, Vector2 anchor, Vector2 pos, Vector2 pivot)
+        {
+            var r = Rect(name, parent, anchor, pos);
+            r.pivot = pivot;
+            return r;
+        }
+
         public static void StyleText(Text t, Font font, int size, FontStyle style, Color color, TextAnchor anchor)
         {
             t.font = font;
