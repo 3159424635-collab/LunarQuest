@@ -820,7 +820,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             {
                 var tm = (GameObject)PrefabUtility.InstantiatePrefab(terrainModel);
                 tm.name = "LunarTerrainVisual";
-                tm.transform.position = new Vector3(0f, ground(new Vector3(0, 0, 170f)) - 1f, 170f);
+                tm.transform.position = new Vector3(0f, 1f, 170f); // 略高于Terrain表面
                 tm.transform.localScale = Vector3.one * 2.5f; // 放大匹配 500m 地图
                 tm.SetActive(true);
                 Report.AppendLine("[地形] NASA 级月面视觉层已叠加（48.7 万面陨石坑地形）");
