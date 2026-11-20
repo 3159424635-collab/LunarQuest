@@ -12,10 +12,40 @@ namespace LunarQuest
         public string characterId;
         public Animator animator;
 
+        void Awake()
+        {
+            EnsureInteractionCollider();
+        }
+
         public override void Interact(GameObject who)
         {
             if (animator) animator.CrossFade("talk", 0.15f);
             if (QuestManager.I != null) QuestManager.I.OnNpc(characterId);
+        }
+
+        public void EnsureInteractionCollider()
+        {
+            if (GetComponentInChildren<Collider>() != null) return;
+
+            var renderers = GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0) return;
+
+            Bounds bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++)
+                bounds.Encapsulate(renderers[i].bounds);
+
+            Vector3 scale = transform.lossyScale;
+            float sy = Mathf.Max(Mathf.Abs(scale.y), 0.0001f);
+            float sxz = Mathf.Max(Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z)), 0.0001f);
+            float height = Mathf.Max(1.2f, bounds.size.y / sy);
+            float radius = Mathf.Clamp(Mathf.Min(bounds.size.x, bounds.size.z) * 0.35f / sxz,
+                0.25f, height * 0.35f);
+
+            var capsule = gameObject.AddComponent<CapsuleCollider>();
+            capsule.direction = 1;
+            capsule.center = transform.InverseTransformPoint(bounds.center);
+            capsule.height = Mathf.Max(height, radius * 2f);
+            capsule.radius = radius;
         }
     }
 }

@@ -65,7 +65,15 @@ namespace LunarQuest.EditorTools
 
             // 草原地面 800×800
             // 地形：Terrain 起伏草原
-            var std = new TerrainData { heightmapResolution = 513, size = new Vector3(800f, 15f, 800f) };
+            const string s1TerrainPath = "Assets/_Project/Scenes/S1_TerrainData.asset";
+            var std = AssetDatabase.LoadAssetAtPath<TerrainData>(s1TerrainPath);
+            if (std == null)
+            {
+                std = new TerrainData();
+                AssetDatabase.CreateAsset(std, s1TerrainPath);
+            }
+            std.heightmapResolution = 513;
+            std.size = new Vector3(800f, 15f, 800f);
             var shts = new float[513, 513];
             for (int z = 0; z < 513; z++)
                 for (int x = 0; x < 513; x++)
@@ -95,12 +103,19 @@ namespace LunarQuest.EditorTools
             grassTex.Apply();
             File.WriteAllBytes("Assets/_Project/Art/Textures/T_Grass.png", grassTex.EncodeToPNG());
             AssetDatabase.ImportAsset("Assets/_Project/Art/Textures/T_Grass.png");
-            var earthLayer = new TerrainLayer
+            const string earthLayerPath = "Assets/_Project/Art/Textures/TL_EarthGrass.asset";
+            var earthLayer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(earthLayerPath);
+            if (earthLayer == null)
             {
-                diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Project/Art/Textures/T_Grass.png"),
-                tileSize = new Vector2(20f, 20f),
-            };
+                earthLayer = new TerrainLayer();
+                AssetDatabase.CreateAsset(earthLayer, earthLayerPath);
+            }
+            earthLayer.diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Project/Art/Textures/T_Grass.png");
+            earthLayer.tileSize = new Vector2(20f, 20f);
             std.terrainLayers = new[] { earthLayer };
+            EditorUtility.SetDirty(earthLayer);
+            EditorUtility.SetDirty(std);
+            AssetDatabase.SaveAssets();
             var stgo = Terrain.CreateTerrainGameObject(std);
             stgo.name = "EarthTerrain";
             stgo.transform.position = new Vector3(-400f, 0f, -400f);
@@ -184,13 +199,14 @@ namespace LunarQuest.EditorTools
             platform.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_Platform", new Color(0.60f, 0.60f, 0.58f));
 
             // 指挥中心与控制台
-            PlaceKenney("buildingOpen", 12f, new Vector3(38f, 0f, -20f), Flat, "ControlCenter", true, new Vector3(0f, -90f, 0f));
+            // 开放建筑不能使用覆盖整个模型包围盒的 BoxCollider，否则入口也会被封死。
+            PlaceKenney("buildingOpen", 12f, new Vector3(38f, 0f, -20f), Flat, "ControlCenter", false, new Vector3(0f, -90f, 0f));
             PlaceKenney("console", 2.6f, new Vector3(35f, 0f, -17f), Flat, "Console_A", false, null);
             PlaceKenney("console", 2.6f, new Vector3(41f, 0f, -17f), Flat, "Console_B", false, null);
             PlaceKenney("computer-wide", 2.6f, new Vector3(38f, 0f, -14f), Flat, "Console_C", false, null);
 
             // 林岚与玩家
-            PlaceNpc("ground_flight_controller", "林岚_飞控", new Vector3(35f, 0f, -10f), Flat,
+            PlaceNpc("ground_flight_controller", "林岚_飞控", new Vector3(35f, 0f, 0f), Flat,
                 "欢迎加入任务。跟我来，先熟悉操作，再去看发射。");
             var player = BuildPlayer(new Vector3(35f, 0f, -5f), Flat);
             player.GetComponent<FirstPersonController>().gravityScale = 1f; // 地球重力
@@ -206,6 +222,9 @@ namespace LunarQuest.EditorTools
             player.GetComponent<HUDController>().SetQuest("【任务1/5】走近林岚按 E 交谈，学习基本操作");
 
             const string scenePath = "Assets/_Project/Scenes/S1_LaunchSite.unity";
+            EditorSettings.serializationMode = SerializationMode.ForceText;
+            // 保存到已有二进制文件会沿用旧格式；删除数据文件但保留 .meta/GUID，再按 ForceText 写回。
+            if (File.Exists(scenePath)) File.Delete(scenePath);
             EditorSceneManager.SaveScene(scene, scenePath);
             RenderPreviewsAt("s1", new[]
             {
@@ -299,6 +318,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             player.GetComponent<HUDController>().SetQuest("E 开门/交谈/查看展品 · F 上下月球车 · V 切换视角");
 
             const string scenePath = "Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity";
+            EditorSettings.serializationMode = SerializationMode.ForceText;
             EditorSceneManager.SaveScene(scene, scenePath);
             SetBuildScenes(scenePath);
             RenderPreviews();
@@ -1055,7 +1075,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             cc.slopeLimit = 50f;
             cc.stepOffset = 0.4f;
             player.AddComponent<FirstPersonController>();
-            player.AddComponent<PlayerInteractor>();
+            player.AddComponent<PlayerInteractor>().interactRange = 5f;
             player.AddComponent<HUDController>();
             player.transform.position = new Vector3(pos.x, ground(pos) + 1.05f, pos.z);
 
@@ -1303,6 +1323,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             go.name = "NPC_" + display;
             Bounds b = LocalBounds(go.transform);
             go.transform.position = new Vector3(pos.x, ground(pos) - b.min.y, pos.z);
+            Bounds placedBounds = LocalBounds(go.transform);
             var anim = go.GetComponent<Animator>() ?? go.AddComponent<Animator>();
             anim.runtimeAnimatorController = BuildNpcController(fileId, path);
             anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
@@ -1310,6 +1331,17 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             npc.animator = anim;
             npc.characterId = fileId;
             npc.prompt = $"与{display.Split('_')[0]}交谈（E）";
+
+            // 场景内直接保存交互碰撞体；NpcInteractor.Awake 仍会为旧场景做兜底。
+            Vector3 scale = go.transform.lossyScale;
+            float sy = Mathf.Max(Mathf.Abs(scale.y), 0.0001f);
+            float sxz = Mathf.Max(Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z)), 0.0001f);
+            float height = Mathf.Max(1.2f, placedBounds.size.y / sy);
+            float radius = Mathf.Clamp(Mathf.Min(placedBounds.size.x, placedBounds.size.z) * 0.35f / sxz, 0.25f, height * 0.35f);
+            var capsule = go.AddComponent<CapsuleCollider>();
+            capsule.center = go.transform.InverseTransformPoint(placedBounds.center);
+            capsule.height = Mathf.Max(height, radius * 2f);
+            capsule.radius = radius;
             Report.AppendLine($"[NPC] {display} @ ({pos.x:F0},{pos.z:F0})，idle/talk，E 可交互");
         }
 
@@ -1512,15 +1544,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
 
         static void SetBuildScenes(string s4Path)
         {
-            var list = new List<EditorBuildSettingsScene>();
-            const string showcase = "Assets/_Project/Cinematics/Module4/Demo/Module4Showcase.unity";
-            if (File.Exists(showcase)) list.Add(new EditorBuildSettingsScene(showcase, true));
-            const string s1 = "Assets/_Project/Scenes/S1_LaunchSite.unity";
-            if (File.Exists(s1)) list.Add(new EditorBuildSettingsScene(s1, true));
-            const string s3 = "Assets/_Project/Scenes/S3_Landing.unity";
-            if (File.Exists(s3)) list.Add(new EditorBuildSettingsScene(s3, true));
-            list.Add(new EditorBuildSettingsScene(s4Path, true));
-            EditorBuildSettings.scenes = list.ToArray();
+            BuildSceneCatalog.ConfigureProjectScenes();
         }
 
         static Bounds LocalBounds(Transform root)

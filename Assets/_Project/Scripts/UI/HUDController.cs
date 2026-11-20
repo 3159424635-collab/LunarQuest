@@ -22,6 +22,7 @@ namespace LunarQuest
 
         PlayerInteractor interactor;
         RoverController rover;
+        VehicleEnterExit vehicle;
         string prompt;
         string quest;
 
@@ -29,6 +30,7 @@ namespace LunarQuest
         {
             interactor = FindObjectOfType<PlayerInteractor>();
             rover = FindObjectOfType<RoverController>();
+            vehicle = rover ? rover.GetComponent<VehicleEnterExit>() : null;
             if (interactor != null)
                 interactor.OnPromptChanged += OnPromptChanged;
         }
@@ -43,7 +45,9 @@ namespace LunarQuest
 
         void Update()
         {
-            string speed = rover ? rover.SpeedKmh.ToString("0") + " km/h" : "--";
+            string speed = vehicle != null && vehicle.IsInVehicle
+                ? rover.SpeedKmh.ToString("0") + " km/h"
+                : "步行模式";
             if (speedText) speedText.text = speed;
             if (promptText) promptText.text = prompt ?? "";
             if (questText) questText.text = quest;

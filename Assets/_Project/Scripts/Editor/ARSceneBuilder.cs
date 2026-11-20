@@ -2,8 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.XR.ARFoundation;
-using System.Collections.Generic;
-using System.IO;
+using Unity.XR.CoreUtils;
 
 namespace LunarQuest.EditorTools
 {
@@ -15,7 +14,7 @@ namespace LunarQuest.EditorTools
     {
         public static void Build()
         {
-            var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             RenderSettings.ambientLight = new Color(0.5f, 0.5f, 0.5f);
 
             // AR Session
@@ -23,16 +22,28 @@ namespace LunarQuest.EditorTools
             sessionGo.AddComponent<ARSession>();
             sessionGo.AddComponent<ARInputManager>();
 
-            // AR Session Origin（相机+平面检测+放置器）
-            var originGo = new GameObject("AR Session Origin");
+            // XR Origin（相机+平面检测+放置器）
+            var originGo = new GameObject("XR Origin");
+            var origin = originGo.AddComponent<XROrigin>();
+            var offsetGo = new GameObject("Camera Offset");
+            offsetGo.transform.SetParent(originGo.transform, false);
             var cameraGo = new GameObject("AR Camera");
-            cameraGo.transform.SetParent(originGo.transform, false);
+            cameraGo.transform.SetParent(offsetGo.transform, false);
+            cameraGo.tag = "MainCamera";
             var cam = cameraGo.AddComponent<Camera>();
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0, 0, 0, 0);
             cameraGo.AddComponent<ARCameraManager>();
             cameraGo.AddComponent<ARCameraBackground>();
             cameraGo.AddComponent<AudioListener>();
+            // 项目交互层统一使用旧 Input API；ARPoseDriver 直接读取 XR InputDevice，
+            // 避免 Android 上启用 "Both" 输入后端产生兼容性警告。
+#pragma warning disable 0618
+            cameraGo.AddComponent<ARPoseDriver>();
+#pragma warning restore 0618
+
+            origin.CameraFloorOffsetObject = offsetGo;
+            origin.Camera = cam;
 
             originGo.AddComponent<ARPlaneManager>();
             originGo.AddComponent<ARRaycastManager>();
@@ -55,14 +66,7 @@ namespace LunarQuest.EditorTools
             const string scenePath = "Assets/_Project/Scenes/S6_AR.unity";
             EditorSceneManager.SaveScene(scene, scenePath);
             Debug.Log("[ARSceneBuilder] S6 AR 场景已创建: " + scenePath);
-
-            var list = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-            if (!list.Exists(s => s.path == scenePath))
-            {
-                list.Add(new EditorBuildSettingsScene(scenePath, true));
-                EditorBuildSettings.scenes = list.ToArray();
-            }
-            Debug.Log("[ARSceneBuilder] 构建列表共 " + list.Count + " 个场景");
+            BuildSceneCatalog.ConfigureProjectScenes();
         }
     }
 }

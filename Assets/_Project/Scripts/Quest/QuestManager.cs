@@ -60,6 +60,21 @@ namespace LunarQuest
 
         public void OnNpc(string characterId) => FireEvent("interact_" + characterId);
 
+        public string GetState(string field)
+            => state.TryGetValue(field, out string value) ? value : null;
+
+        /// <summary>按节点与选项 ID 执行选择；供 UI、存档恢复和自动验收共用。</summary>
+        public bool TrySelectChoice(string nodeId, string choiceId)
+        {
+            foreach (var node in db.Nodes)
+            {
+                if (node.id != nodeId || !ConditionsOk(node) || node.choices == null) continue;
+                foreach (var choice in node.choices)
+                    if (choice.id == choiceId) return ExecuteChoice(choice);
+            }
+            return false;
+        }
+
         public void OnSamplePoint(string pointId)
         {
             if (state.GetValueOrDefault("sample_task_accepted") != "true")
@@ -94,18 +109,56 @@ namespace LunarQuest
 
         void RunNode(DlgNode n)
         {
-            ApplyEffects(n.effects);
+            if (!ApplyEffects(n.effects)) return;
             if (!string.IsNullOrEmpty(n.text)) ShowSub(n);
             if (!string.IsNullOrEmpty(n.task_id)) UpdateTaskHud(n.task_id);
             if (n.choices != null && n.choices.Length > 0) PresentChoices(n);
+            ApplyEffects(n.on_complete_effects);
         }
 
-        void ApplyEffects(DlgEffect[] effects)
+        bool ApplyEffects(DlgEffect[] effects)
         {
-            if (effects == null) return;
+            if (effects == null) return true;
             foreach (var e in effects)
-                if (e != null && e.type == "set_state" && !string.IsNullOrEmpty(e.field))
-                    state[e.field] = e.value;
+            {
+                if (e == null || string.IsNullOrEmpty(e.type)) continue;
+
+                switch (e.type)
+                {
+                    case "set_state":
+                        if (!string.IsNullOrEmpty(e.field)) state[e.field] = e.value;
+                        break;
+
+                    case "deliver_samples_once":
+                    {
+                        int required = Mathf.Max(1, e.required_count);
+                        int.TryParse(state.GetValueOrDefault("sample_count"), out int count);
+                        bool accepted = state.GetValueOrDefault("sample_task_accepted") == "true";
+                        bool delivered = state.GetValueOrDefault("sample_delivered") == "true";
+                        if (!accepted || delivered || count < required)
+                        {
+                            ShowSub("系统", delivered ? "样本已经交付。" : $"样本不足，需要 {required} 份。");
+                            return false;
+                        }
+                        state["sample_count"] = "0";
+                        state["sample_delivered"] = "true";
+                        break;
+                    }
+
+                    case "start_outbound_sequence":
+                        SceneFlow.StartOutboundSequence(2.5f);
+                        break;
+
+                    case "start_return_sequence":
+                        SceneFlow.StartReturnSequence(2.5f);
+                        break;
+
+                    default:
+                        Debug.LogWarning("[QuestManager] 未识别的任务效果: " + e.type);
+                        break;
+                }
+            }
+            return true;
         }
 
         bool ConditionsOk(DlgNode n)
@@ -166,11 +219,21 @@ namespace LunarQuest
 
         void ApplyChoice(DlgNode node, int index)
         {
-            var ch = node.choices[index];
-            ApplyEffects(ch.effects);
+            if (node.choices == null || index < 0 || index >= node.choices.Length) return;
+            ExecuteChoice(node.choices[index]);
+        }
+
+        bool ExecuteChoice(DlgChoice ch)
+        {
+            if (!ApplyEffects(ch.effects)) return false;
             if (!string.IsNullOrEmpty(ch.next_node))
                 foreach (var n in db.Nodes)
-                    if (n.id == ch.next_node && ConditionsOk(n)) { RunNode(n); break; }
+                    if (n.id == ch.next_node && ConditionsOk(n))
+                    {
+                        RunNode(n);
+                        return true;
+                    }
+            return string.IsNullOrEmpty(ch.next_node);
         }
     }
 }

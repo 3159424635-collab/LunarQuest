@@ -69,7 +69,12 @@ namespace LunarQuest
             badge = badgeGo.AddComponent<Image>();
             badge.sprite = MakeChip();
             badge.raycastTarget = false;
-            badgeText = badgeGo.AddComponent<Text>();
+
+            // Image 与 Text 都继承自 Graphic，Unity 不允许它们挂在同一个 GameObject 上。
+            // 文字使用独立子物体，避免 Awake 阶段 AddComponent<Text>() 失败后空引用。
+            var badgeTextGo = new GameObject("Key", typeof(RectTransform));
+            badgeTextGo.transform.SetParent(badgeRect, false);
+            badgeText = badgeTextGo.AddComponent<Text>();
             SetupText(badgeText, 32, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter);
             Stretch(badgeText.rectTransform);
 

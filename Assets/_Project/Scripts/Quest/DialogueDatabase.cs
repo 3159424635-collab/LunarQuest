@@ -9,15 +9,29 @@ namespace LunarQuest
     // "event"/"operator" 是 C# 关键字，用 @ 前缀保留原名（JsonUtility 按原名匹配）。
     [Serializable] public class DlgCond { public string field; public string @operator; public string value; }
     [Serializable] public class DlgEffect { public string type; public string field; public string value; public int required_count; }
-    [Serializable] public class DlgChoice { public string id; public string text; public DlgEffect[] effects; public string next_node; }
+    [Serializable] public class DlgChoice
+    {
+        public string id;
+        public string text;
+        public DlgEffect[] effects;
+        public string next_node;
+        public string on_effect_rejected;
+    }
     [Serializable] public class DlgNode
     {
         public string id; public string task_id; public string @event; public int priority;
         public DlgCond[] conditions; public string speaker; public string channel;
         public string action; public string text; public DlgChoice[] choices; public DlgEffect[] effects;
+        public DlgEffect[] on_complete_effects;
     }
     [Serializable] public class DlgTask { public string id; public string title; public string completion; public string next; }
-    [Serializable] public class DlgChar { public string id; public string display_name; public string role; }
+    [Serializable] public class DlgChar
+    {
+        public string id;
+        public string name;
+        public string display_name;
+        public string role;
+    }
     [Serializable] class DlgWrapper { public DlgNode[] nodes; public DlgTask[] tasks; public DlgChar[] characters; }
 
     /// <summary>
@@ -42,7 +56,10 @@ namespace LunarQuest
             if (w.tasks != null) db.Tasks.AddRange(w.tasks);
             if (w.characters != null)
                 foreach (var c in w.characters)
-                    db.DisplayNames[c.id] = c.display_name;
+                {
+                    string label = !string.IsNullOrEmpty(c.display_name) ? c.display_name : c.name;
+                    db.DisplayNames[c.id] = string.IsNullOrEmpty(label) ? c.id : label;
+                }
             return db;
         }
     }

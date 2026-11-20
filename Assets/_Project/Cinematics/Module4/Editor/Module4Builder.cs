@@ -82,7 +82,7 @@ public static class Module4Builder
         PrefabUtility.SaveAsPrefabAsset(hud.gameObject,U+"Prefabs/Module4HUD.prefab");
         foreach(var s in master.sequences)PrefabUtility.SaveAsPrefabAsset(s.gameObject,C+"Prefabs/"+s.sequenceId+".prefab");
         EditorSceneManager.SaveScene(scene,C+"Demo/Module4Showcase.unity");
-        EditorBuildSettings.scenes=new[]{new EditorBuildSettingsScene(C+"Demo/Module4Showcase.unity",true)};
+        LunarQuest.EditorTools.BuildSceneCatalog.ConfigureProjectScenes();
         PlayerSettings.companyName="LunarQuest Course Project";PlayerSettings.productName="LunarQuest Module 4";
         PlayerSettings.defaultScreenWidth=1280;PlayerSettings.defaultScreenHeight=720;
         PlayerSettings.fullScreenMode=FullScreenMode.Windowed;PlayerSettings.runInBackground=true;

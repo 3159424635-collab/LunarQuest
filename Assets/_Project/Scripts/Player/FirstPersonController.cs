@@ -48,6 +48,7 @@ namespace LunarQuest
 
         void Update()
         {
+            if (SciFiHUD.ModalOpen) return;
             if (Input.GetKeyDown(KeyCode.V)) ToggleView();
             Look();
             Move();

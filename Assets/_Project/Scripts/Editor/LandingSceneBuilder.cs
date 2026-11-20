@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using System.IO;
 
 namespace LunarQuest.EditorTools
 {
@@ -15,10 +16,16 @@ namespace LunarQuest.EditorTools
                 "Assets/_Project/Art/Textures/Stars_PureSky_2k.hdr");
             if (skyTex != null)
             {
-                var skyMat = new Material(Shader.Find("Skybox/Panoramic")) { name = "Skybox_Stars" };
+                const string skyPath = "Assets/_Project/Art/Materials/Skybox_Stars_Landing.mat";
+                var skyMat = AssetDatabase.LoadAssetAtPath<Material>(skyPath);
+                if (skyMat == null)
+                {
+                    skyMat = new Material(Shader.Find("Skybox/Panoramic")) { name = "Skybox_Stars" };
+                    AssetDatabase.CreateAsset(skyMat, skyPath);
+                }
                 skyMat.SetTexture("_MainTex", skyTex);
                 skyMat.SetFloat("_Exposure", 0.8f);
-                AssetDatabase.CreateAsset(skyMat, "Assets/_Project/Art/Materials/Skybox_Stars.mat");
+                EditorUtility.SetDirty(skyMat);
                 RenderSettings.skybox = skyMat;
             }
 
@@ -35,7 +42,15 @@ namespace LunarQuest.EditorTools
             var matTarget = LM("M_LandingTarget", new Color(0.1f, 0.8f, 0.2f));
 
             // ---- 月面：与 S4 完全相同的 Terrain（同参数同贴图同世界位置，保证两场景月面一致） ----
-            var td = new TerrainData { heightmapResolution = 1025, size = new Vector3(500f, 100f, 500f) };
+            const string terrainDataPath = "Assets/_Project/Scenes/S3_TerrainData.asset";
+            var td = AssetDatabase.LoadAssetAtPath<TerrainData>(terrainDataPath);
+            if (td == null)
+            {
+                td = new TerrainData();
+                AssetDatabase.CreateAsset(td, terrainDataPath);
+            }
+            td.heightmapResolution = 1025;
+            td.size = new Vector3(500f, 100f, 500f);
             var hts = new float[1025, 1025];
             for (int z = 0; z < 1025; z++)
                 for (int x = 0; x < 1025; x++)
@@ -57,8 +72,19 @@ namespace LunarQuest.EditorTools
             td.SetHeights(0, 0, hts);
             var lroc = AssetDatabase.LoadAssetAtPath<Texture2D>(
                 "Assets/_Project/Cinematics/Module4/Textures/NASA_Moon_LROC.jpg");
-            var tl = new TerrainLayer { diffuseTexture = lroc, tileSize = new Vector2(500f, 500f) };
+            const string terrainLayerPath = "Assets/_Project/Art/Textures/TL_MoonLanding.asset";
+            var tl = AssetDatabase.LoadAssetAtPath<TerrainLayer>(terrainLayerPath);
+            if (tl == null)
+            {
+                tl = new TerrainLayer();
+                AssetDatabase.CreateAsset(tl, terrainLayerPath);
+            }
+            tl.diffuseTexture = lroc;
+            tl.tileSize = new Vector2(500f, 500f);
             td.terrainLayers = new[] { tl };
+            EditorUtility.SetDirty(tl);
+            EditorUtility.SetDirty(td);
+            AssetDatabase.SaveAssets();
             var tgo = Terrain.CreateTerrainGameObject(td);
             tgo.name = "Terrain";
             tgo.transform.position = new Vector3(-250f, 0f, -250f);
@@ -146,17 +172,13 @@ namespace LunarQuest.EditorTools
 
             // ---- 保存 ----
             const string sp = "Assets/_Project/Scenes/S3_Landing.unity";
+            EditorSettings.serializationMode = SerializationMode.ForceText;
+            // 仅替换场景数据文件，保留 .meta 中的稳定 GUID。
+            if (File.Exists(sp)) File.Delete(sp);
             EditorSceneManager.SaveScene(scene, sp);
             Debug.Log("[LandingSceneBuilder] S3(星空+窗框+动态) 已创建: " + sp);
 
-            var list = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-            if (!list.Exists(s => s.path == sp))
-            {
-                int i4 = list.FindIndex(s => s.path.Contains("S4"));
-                if (i4 >= 0) list.Insert(i4, new EditorBuildSettingsScene(sp, true));
-                else list.Add(new EditorBuildSettingsScene(sp, true));
-                EditorBuildSettings.scenes = list.ToArray();
-            }
+            BuildSceneCatalog.ConfigureProjectScenes();
         }
 
 

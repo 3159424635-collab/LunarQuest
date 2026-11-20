@@ -19,6 +19,8 @@ namespace LunarQuest
         RoverController rover;
         bool inVehicle;
 
+        public bool IsInVehicle => inVehicle;
+
         void Awake()
         {
             rover = GetComponent<RoverController>();
@@ -61,6 +63,16 @@ namespace LunarQuest
         {
             if (inVehicle) Exit();
             else Enter();
+        }
+
+        /// <summary>S4 进场时强制恢复步行状态，防止旧相机或车辆状态占用输入。</summary>
+        public void ForceWalkingState()
+        {
+            inVehicle = false;
+            if (rover == null) rover = GetComponent<RoverController>();
+            if (rover != null) rover.enabled = false;
+            if (roverCamera != null) roverCamera.gameObject.SetActive(false);
+            if (player != null) player.gameObject.SetActive(true);
         }
 
         void Exit()

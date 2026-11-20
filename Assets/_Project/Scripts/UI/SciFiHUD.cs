@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace LunarQuest
@@ -12,6 +13,7 @@ namespace LunarQuest
     public class SciFiHUD : MonoBehaviour
     {
         public static SciFiHUD I { get; private set; }
+        public static bool ModalOpen { get; private set; }
         public Font font;
 
         CanvasGroup subGroup, cardGroup;
@@ -20,13 +22,21 @@ namespace LunarQuest
         RectTransform choicesRoot, cardRect;
         readonly List<GameObject> choiceObjs = new List<GameObject>();
         Action<int> choiceCb;
+        CursorLockMode cursorLockBeforeChoices;
+        bool cursorVisibleBeforeChoices;
+        bool choicesOpen;
         float subUntil;
         float subTarget, cardTarget;
 
         void Awake()
         {
             I = this;
+            // 每个场景的 HUD 都从非模态状态开始，避免跨场景残留的静态标记锁住玩家输入。
+            ModalOpen = false;
             if (font == null) { try { font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); } catch { } }
+
+            if (FindObjectOfType<EventSystem>() == null)
+                new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
 
             var canvas = gameObject.AddComponent<Canvas>();
             Rect safe = Screen.safeArea;
@@ -142,6 +152,19 @@ namespace LunarQuest
             }
             if (cardGroup != null)
                 cardGroup.alpha = Mathf.MoveTowards(cardGroup.alpha, cardTarget, Time.deltaTime * 6f);
+
+            if (choicesOpen)
+            {
+                for (int i = 0; i < Mathf.Min(choiceObjs.Count, 9); i++)
+                    if (Input.GetKeyDown((KeyCode)((int)KeyCode.Alpha1 + i)) ||
+                        Input.GetKeyDown((KeyCode)((int)KeyCode.Keypad1 + i)))
+                    {
+                        Action<int> callback = choiceCb;
+                        HideChoices();
+                        callback?.Invoke(i);
+                        break;
+                    }
+            }
         }
 
         // ---------------- 对外 API ----------------
@@ -155,6 +178,14 @@ namespace LunarQuest
 
         public void SetSpeed(string text) => hudSpeed.text = text;
         public void SetQuest(string text) => hudQuest.text = text;
+
+        /// <summary>切换场景后恢复步行输入，用于处理旧 HUD 被销毁时的模态状态残留。</summary>
+        public static void ResetModalState()
+        {
+            ModalOpen = false;
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
 
         public void ShowCard(string title, string body, Texture2D qrTexture = null)
         {
@@ -179,6 +210,12 @@ namespace LunarQuest
         {
             HideChoices();
             choiceCb = onPick;
+            cursorLockBeforeChoices = Cursor.lockState;
+            cursorVisibleBeforeChoices = Cursor.visible;
+            choicesOpen = true;
+            ModalOpen = true;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
             var panelSprite = SciFiGUI.RoundedPanel(72, 10f, 2f,
                 new Color(0.02f, 0.06f, 0.1f, 0.85f), new Color(SciFiGUI.Cyan.r, SciFiGUI.Cyan.g, SciFiGUI.Cyan.b, 0.6f));
             for (int i = 0; i < options.Count; i++)
@@ -199,8 +236,13 @@ namespace LunarQuest
                 lbl.sizeDelta = new Vector2(Mathf.Min(500f, Screen.width * 0.48f), 40f);
                 var txt = lbl.gameObject.AddComponent<Text>();
                 SciFiGUI.StyleText(txt, font, 20, FontStyle.Normal, SciFiGUI.BodyWhite, TextAnchor.MiddleCenter);
-                txt.text = options[i];
-                btn.onClick.AddListener(() => { HideChoices(); choiceCb?.Invoke(idx); });
+                txt.text = $"{i + 1}. {options[i]}";
+                btn.onClick.AddListener(() =>
+                {
+                    Action<int> callback = choiceCb;
+                    HideChoices();
+                    callback?.Invoke(idx);
+                });
                 choiceObjs.Add(chip.gameObject);
             }
         }
@@ -209,6 +251,18 @@ namespace LunarQuest
         {
             foreach (var go in choiceObjs) Destroy(go);
             choiceObjs.Clear();
+            if (!choicesOpen) return;
+            choicesOpen = false;
+            ModalOpen = false;
+            Cursor.lockState = cursorLockBeforeChoices;
+            Cursor.visible = cursorVisibleBeforeChoices;
+        }
+
+        void OnDestroy()
+        {
+            HideChoices();
+            ModalOpen = false;
+            if (I == this) I = null;
         }
     }
 }

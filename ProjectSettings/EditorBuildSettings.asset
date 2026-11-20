@@ -6,17 +6,20 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/_Project/Cinematics/Module4/Demo/Module4Showcase.unity
-    guid: 76adb4bc53eb25f4a9a498a4befe6562
-  - enabled: 1
     path: Assets/_Project/Scenes/S1_LaunchSite.unity
     guid: 9a1e43354fdedc140b4b2a7bea64f557
+  - enabled: 1
+    path: Assets/_Project/Cinematics/Module4/Demo/Module4Showcase.unity
+    guid: 76adb4bc53eb25f4a9a498a4befe6562
   - enabled: 1
     path: Assets/_Project/Scenes/S3_Landing.unity
     guid: 45e043ad2ee63e24a8b0851b5124686d
   - enabled: 1
     path: Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity
     guid: c7e9720f2f3a9684c826485d95a44802
+  - enabled: 0
+    path: Assets/_Project/Scenes/S6_AR.unity
+    guid: c69028ddfc864ea43bdccc69a353156e
   m_configObjects:
     UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: 4ce0ae86b74cab547b4e630b695e1bb2, type: 2}
     com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: 5eb08c981872f2f48b2e1da2fc29e147, type: 2}

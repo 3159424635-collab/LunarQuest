@@ -25,6 +25,7 @@ namespace LunarQuest.Module4
         public int completedSignals;
         public bool exportMode;
         string smokeResult;
+        string flowMode = "full";
 
         void Start()
         {
@@ -38,6 +39,13 @@ namespace LunarQuest.Module4
             var args=Environment.GetCommandLineArgs();
             for(int i=0;i<args.Length-1;i++)if(args[i]=="-m4smoke")smokeResult=args[i+1];
             if(!string.IsNullOrEmpty(smokeResult)) { Time.timeScale=20; AudioListener.pause=true; }
+
+            if (!externalClock && string.IsNullOrEmpty(smokeResult))
+            {
+                flowMode = LunarQuest.SceneFlow.ConsumeShowcaseMode();
+                if (flowMode == "return") clock = 141;
+                else if (flowMode == "outbound") clock = 0;
+            }
         }
 
         public void Jump(double time)
@@ -65,8 +73,16 @@ namespace LunarQuest.Module4
                 if (Input.GetKeyDown(KeyCode.Alpha2)) Jump(69);
                 if (Input.GetKeyDown(KeyCode.Alpha3)) Jump(100);
                 if (Input.GetKeyDown(KeyCode.Alpha4)) Jump(141);
-                if (Input.GetKeyDown(KeyCode.R)) { paused = false; Jump(0); }
+                if (Input.GetKeyDown(KeyCode.R)) { paused = false; Jump(flowMode == "return" ? 141 : 0); }
                 if (Input.GetKeyDown(KeyCode.Escape)) Application.Quit();
+
+                // 从 S1 进入时只播放发射与环月两段，结束后进入可操作的着陆小游戏。
+                if (flowMode == "outbound" && clock >= 99.9)
+                {
+                    paused = true;
+                    LunarQuest.SceneFlow.LoadLanding();
+                    return;
+                }
                 if (clock >= totalDuration)
                 {
                     clock = totalDuration - .01; paused = true;
@@ -101,7 +117,10 @@ namespace LunarQuest.Module4
 
             hud.progress.fillAmount = Mathf.Clamp01(t / totalDuration);
             hud.missionClock.text = "MET  " + TimeSpan.FromSeconds(t).ToString(@"mm\:ss");
-            hud.footerText.text = exportMode ? "LUNARQUEST   /   演出与视听展示" : "1 发射    2 地出    3 界面    4 返回    SPACE 暂停    R 重播    ESC 退出";
+            hud.footerText.text = exportMode ? "LUNARQUEST   /   演出与视听展示"
+                : flowMode == "return" && paused && clock >= totalDuration - .1
+                    ? "任务完成    R 重播返航    ESC 退出"
+                    : "1 发射    2 地出    3 界面    4 返回    SPACE 暂停    R 重播    ESC 退出";
             hud.landingText.gameObject.SetActive(section == 3 && local > 28);
             hud.landingPanel.SetActive(section == 3 && local > 28);
             hud.minimapArrow.parent.gameObject.SetActive(section == 3);

@@ -21,7 +21,8 @@ namespace LunarQuest
             if (SciFiHUD.I != null)
             {
                 if (showing) SciFiHUD.I.ShowCard(exhibitTitle,
-                    exhibitDesc + "\n\n[手机扫描展台二维码可查看 AR 模型（W9 联调启用）]");
+                    exhibitDesc + "\n\n[手机扫描二维码可在“月征AR”中查看模型]",
+                    qrTexture);
                 else SciFiHUD.I.HideCard();
             }
             if (QuestManager.I == null) return;

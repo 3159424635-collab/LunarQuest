@@ -57,8 +57,10 @@ namespace LunarQuest
                 if (phaseTimer >= 5f) { phase = 1; if (QuestManager.I) QuestManager.I.FireEvent("landing_minigame_start"); }
                 return;
             }
-            float target = Input.GetKey(KeyCode.UpArrow) ? maxThrust : 0;
-            thrust = Mathf.MoveTowards(thrust, target, thrustRate * Time.deltaTime);
+            // 按住才喷气：松开上键后推力自动回落，下键可更快收推。
+            float target = Input.GetKey(KeyCode.UpArrow) ? maxThrust : 0f;
+            float response = Input.GetKey(KeyCode.DownArrow) ? thrustRate * 2f : thrustRate;
+            thrust = Mathf.MoveTowards(thrust, target, response * Time.deltaTime);
             hSpeed += Input.GetAxisRaw("Horizontal") * rcsForce * Time.deltaTime;
             hSpeed *= 1 - 0.3f * Time.deltaTime;
             fuel = Mathf.Max(0, fuel - (thrust / maxThrust) * fuelBurnRate * Time.deltaTime);
@@ -225,7 +227,7 @@ namespace LunarQuest
             Label(x5, pr.y + 5, cw, 14, "推力", sT);
             Label(x5, pr.y + 20, cw, 24, (thrust / maxThrust * 100).ToString("F0") + "%", sM);
             Bar(new Rect(x5 + 10, pr.y + 50, cw - 20, 6), thrust / maxThrust, CWarn);
-            Label((sw - 400) / 2, pr.y - 25, 400, 16, "↑ 反推减速   ↓ 松开加速   ←→ 水平微调", sT);
+            Label((sw - 440) / 2, pr.y - 25, 440, 16, "按住 ↑ 反推减速   松开/按 ↓ 收推   ←→ 水平微调", sT);
             if (playing && altitude < 100 && altitude > 0)
             {
                 bool fast = Mathf.Abs(vSpeed) > safeVerticalSpeed;

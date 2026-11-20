@@ -92,6 +92,13 @@ namespace LunarQuest
                 rb.AddForce(-transform.forward * speed * 3f, ForceMode.Acceleration);
         }
 
+        void Update()
+        {
+            // 上车后玩家根物体（包括 HUDController）会停用，由车辆继续刷新速度。
+            if (SciFiHUD.I != null)
+                SciFiHUD.I.SetSpeed(SpeedKmh.ToString("0") + " km/h");
+        }
+
         /// <summary>当前速度 km/h，HUD 速度表直接读这个。</summary>
         public float SpeedKmh => rb.velocity.magnitude * 3.6f;
     }
