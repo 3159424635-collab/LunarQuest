@@ -88,8 +88,8 @@ public static class Module4Builder
         EditorSceneManager.SaveScene(scene,C+"Demo/Module4Showcase.unity");
         LunarQuest.EditorTools.BuildSceneCatalog.ConfigureProjectScenes();
         PlayerSettings.companyName="LunarQuest Course Project";PlayerSettings.productName="LunarQuest Module 4";
-        PlayerSettings.defaultScreenWidth=1280;PlayerSettings.defaultScreenHeight=720;
-        PlayerSettings.fullScreenMode=FullScreenMode.Windowed;PlayerSettings.runInBackground=true;
+        PlayerSettings.defaultScreenWidth=1920;PlayerSettings.defaultScreenHeight=1080;PlayerSettings.defaultIsNativeResolution=false;
+        PlayerSettings.fullScreenMode=FullScreenMode.FullScreenWindow;PlayerSettings.runInBackground=true;
         PlayerSettings.SetScriptingBackend(BuildTargetGroup.Standalone,ScriptingImplementation.Mono2x);
         PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.StandaloneWindows64,false);
         PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneWindows64,new[]{GraphicsDeviceType.Direct3D11});

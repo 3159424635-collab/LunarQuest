@@ -17,6 +17,10 @@ namespace LunarQuest.EditorTools
 
             PlayerSettings.companyName = "LunarQuest";
             PlayerSettings.productName = "月征：绕·落·回";
+            PlayerSettings.defaultScreenWidth = 1920;
+            PlayerSettings.defaultScreenHeight = 1080;
+            PlayerSettings.defaultIsNativeResolution = false;
+            PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
                 scenes = BuildSceneCatalog.DesktopScenes,
