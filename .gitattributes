@@ -9,10 +9,11 @@
 *.yaml text
 *.yml text
 *.meta text
-# Unity 资源在 Force Text 模式下是 YAML 文本，可正常查看差异
+# Unity 资源通常是 YAML，但 TerrainData 等 .asset 仍是二进制。
+# text=auto 可保留 YAML 的文本处理，同时避免全新检出时损坏二进制资源。
 *.unity text
 *.prefab text
-*.asset text
+*.asset text=auto
 *.mat text
 *.controller text
 *.playable text
