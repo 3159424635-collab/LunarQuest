@@ -30,15 +30,17 @@
     }
   },
   "tasks": [
-    {"id": "T00_launch", "title": "发射前教学", "completion": "完成 WASD、鼠标观察、E 教学并触发发射", "next": "T10_lunar_orbit"},
-    {"id": "T10_lunar_orbit", "title": "绕月观察", "completion": "绕月演出完成", "next": "T20_landing"},
-    {"id": "T20_landing", "title": "安全着陆", "completion": "着陆小游戏成功", "next": "T30_eva"},
-    {"id": "T30_eva", "title": "前往广寒站（WASD 移动）", "completion": "完成低重力教学并抵达广寒站", "next": "T31_base_briefing"},
-    {"id": "T31_base_briefing", "title": "接取采样任务", "completion": "确认 accept_sample_mission 选项", "next": "T32_sample_collection"},
-    {"id": "T32_sample_collection", "title": "三号陨石坑采样", "completion": "三个不同采样点各采样成功一次，共三份", "next": "T33_sample_delivery"},
-    {"id": "T33_sample_delivery", "title": "交付月壤样本", "completion": "sample_delivered 为 true", "next": "T34_exhibit"},
-    {"id": "T34_exhibit", "title": "参观科普展示厅", "completion": "展示装置交互完成后设 exhibit_complete 为 true", "next": "T40_return"},
-    {"id": "T40_return", "title": "返回地球", "completion": "返回演出结束并进入结算", "next": null}
+    {"id": "T00_launch", "title": "与飞控林岚会合", "objective": "出生点正前方：面向林岚，靠近后按 E 交谈", "completion": "掌握 WASD、鼠标观察与 E 交互", "next": "T01_launch_tour"},
+    {"id": "T01_launch_tour", "title": "跟随林岚参观发射场", "objective": "沿铺装路线跟随林岚；她停下后靠近，按 E / 空格继续", "completion": "完成指挥中心、跟踪天线、观景台与火箭集合点导览", "next": "T02_launch_ready"},
+    {"id": "T02_launch_ready", "title": "在火箭前确认发射", "objective": "火箭前集合点：面向飞控林岚并按 E，选择“开始发射”", "completion": "与林岚交谈并确认发射", "next": "T10_lunar_orbit"},
+    {"id": "T10_lunar_orbit", "title": "绕月观察", "objective": "按 ← / → 微调观察方向，等待飞行器进入着陆阶段", "completion": "绕月演出完成", "next": "T20_landing"},
+    {"id": "T20_landing", "title": "安全着陆", "objective": "按住 ↑ 反推减速，松开或按 ↓ 收推；← / → 修正水平速度", "completion": "着陆小游戏成功", "next": "T30_eva"},
+    {"id": "T30_eva", "title": "前往广寒站", "objective": "按 Q 打开导航；进入中央穹顶，找到任务协调员周航并按 E 交谈", "completion": "完成低重力教学并抵达广寒站", "next": "T31_base_briefing"},
+    {"id": "T31_base_briefing", "title": "接取采样任务", "objective": "中央穹顶内：与任务协调员周航交谈（按 E），确认采样任务", "completion": "确认 accept_sample_mission 选项", "next": "T32_sample_collection"},
+    {"id": "T32_sample_collection", "title": "采集月壤样本 {sample_count}/3", "objective": "按 Q 查看黄色样本点；靠近标记后按 E 采集，驾驶时也可直接按 E", "completion": "三个不同采样点各采样成功一次，共三份", "next": "T33_sample_delivery"},
+    {"id": "T33_sample_delivery", "title": "交付月壤样本", "objective": "返回中央穹顶，找到科学家许青并按 E 交谈，选择交付样本", "completion": "sample_delivered 为 true", "next": "T34_exhibit"},
+    {"id": "T34_exhibit", "title": "参观科普展示厅", "objective": "中央穹顶展示区：靠近任一展台按 E 查看，关闭展品卡片完成参观", "completion": "展示装置交互完成后设 exhibit_complete 为 true", "next": "T40_return"},
+    {"id": "T40_return", "title": "确认返航", "objective": "返回中央穹顶，找到任务协调员周航并按 E 交谈，选择确认返航", "completion": "返回演出结束并进入结算", "next": null}
   ],
   "characters": [
     {"id": "player_astronaut", "name": "玩家宇航员", "fictional": true},
@@ -58,18 +60,73 @@
       "speaker": "ground_flight_controller",
       "channel": "in_person",
       "action": "wave",
-      "text": "欢迎加入任务。我是飞控林岚。先熟悉一下操作：用 WASD 移动，移动鼠标观察四周。"
+      "text": "欢迎加入任务，我是飞控林岚。你现在就站在我面前：用 WASD 移动、鼠标观察，然后看向我按 E，我带你去看看真正的发射场。"
+    },
+    {
+      "id": "launch_tour_start",
+      "task_id": "T01_launch_tour",
+      "event": "launch_tour_start",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "in_person",
+      "action": "talk",
+      "text": "别急着登月。一次航天任务从来不只是火箭点火的那几秒；总装、测试、测控和一代代人的累积，才是我们能走到这里的原因。跟紧我。"
+    },
+    {
+      "id": "launch_tour_control_center",
+      "task_id": "T01_launch_tour",
+      "event": "launch_tour_control_center",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "in_person",
+      "action": "point",
+      "text": "这里是地面指挥中心。1970 年 4 月 24 日，“东方红一号”升空，中国进入航天时代；2003 年 10 月 15 日，杨利伟乘神舟五号往返太空，完成中国首次载人航天飞行。"
+    },
+    {
+      "id": "launch_tour_tracking",
+      "task_id": "T01_launch_tour",
+      "event": "launch_tour_tracking",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "in_person",
+      "action": "point",
+      "text": "这是跟踪天线。飞行器离开地面后，测控系统要持续确认它的位置、速度和状态。2007 年 10 月 24 日，中国首颗月球探测器“嫦娥一号”发射，从此真正开始绕月探测。"
+    },
+    {
+      "id": "launch_tour_lunar_milestones",
+      "task_id": "T01_launch_tour",
+      "event": "launch_tour_lunar_milestones",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "in_person",
+      "action": "point",
+      "text": "从这里可以看到整个发射区。2013 年，嫦娥三号携“玉兔号”在月面软着陆；2019 年 1 月 3 日，嫦娥四号完成人类探测器首次月球背面软着陆和巡视探测。每一步都在为下一步验证技术。"
+    },
+    {
+      "id": "launch_tour_rocket",
+      "task_id": "T01_launch_tour",
+      "event": "launch_tour_rocket",
+      "priority": 100,
+      "conditions": [],
+      "speaker": "ground_flight_controller",
+      "channel": "in_person",
+      "action": "point",
+      "text": "最后是今天的主角——运载火箭。2020 年，嫦娥五号完成中国首次月面采样返回，为探月工程“绕、落、回”三步走收官。你接下来的任务，就会亲自经历这三个阶段。"
     },
     {
       "id": "launch_departure_offer",
-      "task_id": "T00_launch",
+      "task_id": "T02_launch_ready",
       "event": "interact_ground_flight_controller",
       "priority": 100,
       "conditions": [],
       "speaker": "ground_flight_controller",
       "channel": "in_person",
       "action": "talk",
-      "text": "操作确认完毕。准备好后，我们将进入发射与环月观测阶段。",
+      "text": "地面流程已经了解完毕。现在你站在火箭前，准备好后，我们就进入发射与环月观测阶段。",
       "choices": [
         {
           "id": "confirm_launch",
@@ -98,14 +155,14 @@
     },
     {
       "id": "launch_ready",
-      "task_id": "T00_launch",
+      "task_id": "T02_launch_ready",
       "event": "launch_platform_ready",
       "priority": 100,
       "conditions": [],
       "speaker": "ground_flight_controller",
       "channel": "radio",
       "action": null,
-      "text": "发射准备完成。看向发射塔，我们即将出发。"
+      "text": "参观结束。这不只是一枚火箭，也是几十年技术积累接力向前的结果。转过身来按 E 与我确认，我们准备出发。"
     },
     {
       "id": "orbit_view_hint",
@@ -213,7 +270,7 @@
       "speaker": "base_coordinator",
       "channel": "in_person",
       "action": "point",
-      "text": "勘测点已标在导航上。到达后，靠近采样点并按住 E。留意岩石和地形起伏。"
+      "text": "三处勘测点已同步到平板。步行或驾驶时按 Q 展开导航，按 M 切换量程；驾驶靠近标记点后可直接按 E 启动车载机械臂采样。"
     },
     {
       "id": "coordinator_mission_deferred",
@@ -336,7 +393,7 @@
     },
     {
       "id": "sample_third",
-      "task_id": "T32_sample_collection",
+      "task_id": "T33_sample_delivery",
       "event": "sample_committed",
       "priority": 100,
       "conditions": [{"field": "sample_count", "operator": "eq", "value": 3}],

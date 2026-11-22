@@ -13,7 +13,8 @@ namespace LunarQuest
 
         public override void Interact(GameObject who)
         {
-            if (QuestManager.I != null) QuestManager.I.OnSamplePoint(pointId);
+            bool collected = QuestManager.I != null && QuestManager.I.OnSamplePoint(pointId);
+            if (!collected) return;
             Debug.Log($"[采样] {who.name} 采集勘测点 {pointId}");
             Destroy(gameObject);
         }

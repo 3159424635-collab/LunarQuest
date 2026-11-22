@@ -43,7 +43,7 @@ namespace LunarQuest.EditorTools
             string[] need = { "Player", "Rover", "QuestManager", "SciFiHUD", "InteractionPromptUI",
                 "NPC_周航", "NPC_许青", "NPC_陈越", "SampleRock_A", "Crater03Trigger",
                 "ExhibitStand_0", "ExhibitStand_1", "ExhibitStand_2", "DomeDoor", "Airlock_S_Outer",
-                "Airlock_S_Inner", "Airlock_W_Gate", "MinimapCamera", "LunarTerrainVisual" };
+                "Airlock_S_Inner", "Airlock_W_Gate", "FieldTabletNavigator", "LunarTerrainVisual" };
             foreach (var n in need)
             {
                 bool found = false;

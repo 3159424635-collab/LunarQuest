@@ -27,6 +27,6 @@ Material:
     m_Floats:
     - _Stars: 1
     m_Colors:
-    - _Bottom: {r: 0.002, g: 0.002, b: 0.006, a: 1}
+    - _Bottom: {r: 0.003, g: 0.004, b: 0.01, a: 1}
     - _Top: {r: 0.001, g: 0.002, b: 0.006, a: 1}
   m_BuildTextureStacks: []

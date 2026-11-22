@@ -44,11 +44,19 @@ namespace LunarQuest
             altitude = startAltitude; vSpeed = -15; hSpeed = 0; thrust = 0;
             fuel = fuelCapacity; playing = true; landed = crashed = false;
             stress = 0; gameTimer = 0; phase = 0; phaseTimer = 0; transitProgress = 0;
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
         }
 
         void Update()
         {
-            if (!playing) return;
+            if (!playing)
+            {
+                if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) ||
+                    Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.Space))
+                    ContinueFromResult();
+                return;
+            }
             gameTimer += Time.deltaTime;
             if (phase == 0)
             {
@@ -97,6 +105,8 @@ namespace LunarQuest
                 playing = false;
                 bool ok = Mathf.Abs(vSpeed) <= safeVerticalSpeed && Mathf.Abs(hSpeed) <= safeHorizontalSpeed;
                 landed = ok; crashed = !ok;
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
                 if (QuestManager.I) QuestManager.I.FireEvent(ok ? "landing_succeeded" : "landing_failed");
             }
         }
@@ -237,15 +247,27 @@ namespace LunarQuest
 
         void DrawResult(float sw, float sh, bool ok)
         {
-            float w = 400, h = 100;
+            float w = 400, h = 124;
             var r = new Rect((sw - w) / 2, sh / 2 - h / 2, w, h);
             Draw(r, CBg); Border(r, ok ? CBright : CDanger);
             Label(r.x, r.y + 10, w, 30, ok ? "◤ 着陆成功 ◢" : "◤ 着陆失败 ◢", sL);
             Label(r.x, r.y + 45, w, 18, "速度 " + Mathf.Abs(vSpeed).ToString("F1") + " m/s | 燃料 " + fuel.ToString("F0") + "%", sS);
-            if (GUI.Button(new Rect(r.x + 100, r.y + 68, 200, 24), ok ? "进入月面 →" : "重新尝试"))
+            if (GUI.Button(new Rect(r.x + 100, r.y + 68, 200, 28), ok ? "进入月面 →" : "重新尝试"))
+                ContinueFromResult();
+            Label(r.x, r.y + 99, w, 18, "鼠标点击，或按 Enter / E 继续", sT);
+        }
+
+        void ContinueFromResult()
+        {
+            if (landed)
             {
-                if (ok) SceneManager.LoadScene("S4_MoonSurface_Whitebox");
-                else ResetGame();
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+                SceneManager.LoadScene("S4_MoonSurface_Whitebox");
+            }
+            else if (crashed)
+            {
+                ResetGame();
             }
         }
 

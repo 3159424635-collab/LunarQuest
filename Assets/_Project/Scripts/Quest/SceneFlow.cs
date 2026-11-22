@@ -92,6 +92,11 @@ namespace LunarQuest
 
         void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            // Unity 的重力是全局项目设置，不会随 Scene 保存；必须在每次切场景时明确恢复。
+            Physics.gravity = scene.name == SceneFlow.MoonScene
+                ? new Vector3(0f, -9.81f / 6f, 0f)
+                : new Vector3(0f, -9.81f, 0f);
+
             if (scene.name == SceneFlow.LaunchScene)
                 StartCoroutine(FixLaunchSiteAfterAwake());
             else if (scene.name == SceneFlow.MoonScene)
@@ -160,19 +165,32 @@ namespace LunarQuest
                     break;
                 }
 
-            // 仅校正旧场景：固定在建筑外的平坦区域，玩家朝 +Z，林岚位于正前方 5 米。
+            // 仅校正旧场景：林岚站在建筑外，玩家出生在她正前方，双方面对面。
             if (flightController != null && HorizontalDistance(flightController.transform.position, 35f, 0f) > 0.1f)
                 MoveNpcToGround(flightController, 35f, 0f);
 
+            if (flightController != null)
+                flightController.transform.rotation = Quaternion.identity;
+
             var player = GameObject.FindGameObjectWithTag("Player");
-            if (player != null && HorizontalDistance(player.transform.position, 35f, -5f) > 0.1f)
+            if (player != null)
             {
                 var controller = player.GetComponent<CharacterController>();
                 if (controller != null) controller.enabled = false;
                 player.transform.SetPositionAndRotation(
-                    new Vector3(35f, GroundY(35f, -5f) + 1.05f, -5f),
-                    Quaternion.identity);
+                    new Vector3(35f, GroundY(35f, 4f) + 1.05f, 4f),
+                    Quaternion.Euler(0f, 180f, 0f));
                 if (controller != null) controller.enabled = true;
+
+                var interaction = player.GetComponent<PlayerInteractor>();
+                if (interaction != null) interaction.interactRange = 5f;
+            }
+
+            if (flightController != null)
+            {
+                var guide = flightController.GetComponent<LaunchSiteTourGuide>();
+                if (guide == null) guide = flightController.gameObject.AddComponent<LaunchSiteTourGuide>();
+                guide.ResetTour(player != null ? player.transform : null);
             }
         }
 

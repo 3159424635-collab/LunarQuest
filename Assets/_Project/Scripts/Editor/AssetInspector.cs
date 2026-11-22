@@ -27,6 +27,14 @@ namespace LunarQuest.EditorTools
             Inspect("Assets/_Project/Art/Models/月球操作仓.fbx", "opod");
         }
 
+        public static void InspectNasaModels()
+        {
+            Inspect("Assets/_Project/Art/Models/NASA/Space Exploration Vehicle/Space Exploration Vehicle.glb",
+                "nasa_sev");
+            Inspect("Assets/_Project/Art/Models/NASA/Apollo Lunar Module/Apollo Lunar Module.glb",
+                "nasa_apollo_lm");
+        }
+
         // 全面排查建筑漏缝：外围四角度 + 所有关键连接点
         public static void AuditBuilding()
         {

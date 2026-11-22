@@ -17,6 +17,7 @@ namespace LunarQuest
         public Vector3 exitOffset = new Vector3(-2.5f, 0f, 0f); // 下车点（车身左侧，本地坐标）
 
         RoverController rover;
+        Rigidbody roverBody;
         bool inVehicle;
 
         public bool IsInVehicle => inVehicle;
@@ -24,8 +25,10 @@ namespace LunarQuest
         void Awake()
         {
             rover = GetComponent<RoverController>();
+            roverBody = GetComponent<Rigidbody>();
             // 初始为步行状态：车辆控制与车辆相机关闭，避免键盘同时驱动两者
             rover.enabled = false;
+            ParkRover();
             if (roverCamera) roverCamera.gameObject.SetActive(false);
         }
 
@@ -48,6 +51,7 @@ namespace LunarQuest
         {
             inVehicle = true;
             player.gameObject.SetActive(false);     // 玩家整体隐藏（含相机、控制器、交互）
+            UnparkRover();
             rover.enabled = true;
             if (roverCamera)
             {
@@ -70,7 +74,9 @@ namespace LunarQuest
         {
             inVehicle = false;
             if (rover == null) rover = GetComponent<RoverController>();
+            if (roverBody == null) roverBody = GetComponent<Rigidbody>();
             if (rover != null) rover.enabled = false;
+            ParkRover();
             if (roverCamera != null) roverCamera.gameObject.SetActive(false);
             if (player != null) player.gameObject.SetActive(true);
         }
@@ -79,10 +85,34 @@ namespace LunarQuest
         {
             inVehicle = false;
             rover.enabled = false;
+            ParkRover();
             if (roverCamera) roverCamera.gameObject.SetActive(false);
             // 下车点按车身朝向变换到世界坐标，抬高少许防止卡进地面或车体碰撞
             player.position = transform.TransformPoint(exitOffset) + Vector3.up * 0.35f;
             player.gameObject.SetActive(true);
+        }
+
+        void ParkRover()
+        {
+            if (roverBody == null) roverBody = GetComponent<Rigidbody>();
+            if (roverBody == null) return;
+
+            // 关闭控制器后若仍让刚体参与物理，SEV 的高车身会在微小坡面或残余角速度下慢慢翻倒。
+            // 停车时清除动量并锁成运动学刚体；不强制旋转，避免在斜坡上下车时车身瞬间跳姿态。
+            roverBody.velocity = Vector3.zero;
+            roverBody.angularVelocity = Vector3.zero;
+            roverBody.isKinematic = true;
+            roverBody.Sleep();
+        }
+
+        void UnparkRover()
+        {
+            if (roverBody == null) roverBody = GetComponent<Rigidbody>();
+            if (roverBody == null) return;
+            roverBody.isKinematic = false;
+            roverBody.velocity = Vector3.zero;
+            roverBody.angularVelocity = Vector3.zero;
+            roverBody.WakeUp();
         }
     }
 }

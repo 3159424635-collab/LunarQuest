@@ -45,7 +45,6 @@ namespace LunarQuest.EditorTools
             EnsureFolders();
             FixKenneyMaterials();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            Physics.gravity = new Vector3(0f, -9.81f, 0f); // 地球重力
             // 地球白天氛围：程序化蓝天 + 暖阳光
             var sun = new GameObject("Sun").AddComponent<Light>();
             sun.type = LightType.Directional;
@@ -63,8 +62,7 @@ namespace LunarQuest.EditorTools
             }
             RenderSettings.skybox = sky;
 
-            // 草原地面 800×800
-            // 地形：Terrain 起伏草原
+            // 文昌风格滨海地形：外围保留湿地植被，发射区使用工程硬化地面。
             const string s1TerrainPath = "Assets/_Project/Scenes/S1_TerrainData.asset";
             var std = AssetDatabase.LoadAssetAtPath<TerrainData>(s1TerrainPath);
             if (std == null)
@@ -88,38 +86,22 @@ namespace LunarQuest.EditorTools
                     float d3 = Mathf.Sqrt(wx * wx + (wz - 15f) * (wz - 15f));
                     float flat = Mathf.Max(FlatF2(d1, 80f), Mathf.Max(FlatF2(d2, 40f), FlatF2(d3, 30f)));
                     h = Mathf.Lerp(h, 0f, flat);
+                    // 南侧远景压成低缓海岸，海面覆盖在地形之上。
+                    float coast = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-210f, -300f, wz));
+                    h = Mathf.Lerp(h, 0f, coast);
                     shts[z, x] = h / 15f;
                 }
             std.SetHeights(0, 0, shts);
-            // 草地纹理：程序生成（绿色+噪声颗粒，不是地球照片）
-            var grassTex = new Texture2D(64, 64, TextureFormat.RGB24, false);
-            var rng = new System.Random(42);
-            for (int py = 0; py < 64; py++)
-                for (int px = 0; px < 64; px++)
-                {
-                    float v = 0.38f + 0.08f * (float)rng.NextDouble();
-                    grassTex.SetPixel(px, py, new Color(v, v + 0.12f, v - 0.05f));
-                }
-            grassTex.Apply();
-            File.WriteAllBytes("Assets/_Project/Art/Textures/T_Grass.png", grassTex.EncodeToPNG());
-            AssetDatabase.ImportAsset("Assets/_Project/Art/Textures/T_Grass.png");
-            const string earthLayerPath = "Assets/_Project/Art/Textures/TL_EarthGrass.asset";
-            var earthLayer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(earthLayerPath);
-            if (earthLayer == null)
-            {
-                earthLayer = new TerrainLayer();
-                AssetDatabase.CreateAsset(earthLayer, earthLayerPath);
-            }
-            earthLayer.diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/_Project/Art/Textures/T_Grass.png");
-            earthLayer.tileSize = new Vector2(20f, 20f);
-            std.terrainLayers = new[] { earthLayer };
-            EditorUtility.SetDirty(earthLayer);
+            BuildLaunchTerrainLayers(std);
             EditorUtility.SetDirty(std);
             AssetDatabase.SaveAssets();
             var stgo = Terrain.CreateTerrainGameObject(std);
             stgo.name = "EarthTerrain";
             stgo.transform.position = new Vector3(-400f, 0f, -400f);
             float Flat(Vector3 p) => 0f;
+            float Walkway(Vector3 p) => 0.2f;
+
+            BuildLaunchGroundInfrastructure();
 
             // 发射台基座
             var pad = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -128,12 +110,11 @@ namespace LunarQuest.EditorTools
             pad.transform.position = new Vector3(0f, 0.5f, -46f);
             pad.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_Concrete", new Color(0.62f, 0.62f, 0.60f));
 
-            // 土星五号（竖直构件按高度归一化至 110m）
-            PlaceModelHeight(ModelDir + "/土星五号火箭.fbx", 110f, new Vector3(0f, 0.9f, -46f), Flat, "SaturnV", true);
+            // 与 S2 发射演出共用 LQ-01 造型与配色，避免中国航天叙事旁出现土星五号。
+            BuildMissionRocket(new Vector3(0f, 1f, -46f), 2.4f);
 
-            // 发射塔（Kenney 桁架两节）+ 安全区围栏
-            PlaceKenneyHeight("metalStructure", 24f, new Vector3(13f, 0f, -46f), Flat, "TowerA", false);
-            PlaceKenneyHeight("metalStructure", 24f, new Vector3(13f, 0f, -54f), Flat, "TowerB", false);
+            // 与约 105m 火箭等高的程序化勤务塔，不再使用两座仅 24m 的孤立小桁架。
+            BuildLaunchServiceTower(new Vector3(15f, 0f, -46f), 105f);
             (Vector3 p, float r)[] fences =
             {
                 (new Vector3(0f, 0f, -22f), 180f), (new Vector3(0f, 0f, -70f), 0f),
@@ -145,24 +126,24 @@ namespace LunarQuest.EditorTools
             // ---- VAB 垂直总装厂房（程序化立方体，正确比例） ----
             var vabBody = GameObject.CreatePrimitive(PrimitiveType.Cube);
             vabBody.name = "VAB";
-            vabBody.transform.position = new Vector3(-60f, 25f, -65f);
-            vabBody.transform.localScale = new Vector3(45f, 50f, 30f);
+            vabBody.transform.position = new Vector3(-67.5f, 60f, -70f);
+            vabBody.transform.localScale = new Vector3(55f, 120f, 45f);
             vabBody.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_VAB", new Color(0.72f, 0.73f, 0.76f));
             // VAB 顶部装饰条
             var vabTrim = GameObject.CreatePrimitive(PrimitiveType.Cube);
             vabTrim.name = "VAB_Roof";
-            vabTrim.transform.position = new Vector3(-60f, 50.5f, -65f);
-            vabTrim.transform.localScale = new Vector3(46f, 1f, 31f);
+            vabTrim.transform.position = new Vector3(-67.5f, 120.75f, -70f);
+            vabTrim.transform.localScale = new Vector3(56f, 1.5f, 46f);
             vabTrim.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_VABRoof", new Color(0.5f, 0.52f, 0.56f));
             // VAB 大门
             var vabDoor = GameObject.CreatePrimitive(PrimitiveType.Cube);
             vabDoor.name = "VAB_Door";
-            vabDoor.transform.position = new Vector3(-60f, 20f, -49.8f);
-            vabDoor.transform.localScale = new Vector3(20f, 40f, 0.3f);
+            vabDoor.transform.position = new Vector3(-67.5f, 50f, -47.35f);
+            vabDoor.transform.localScale = new Vector3(32f, 100f, 0.3f);
             vabDoor.GetComponent<Renderer>().sharedMaterial = LoadOrCreateMat("M_VABDoor", new Color(0.25f, 0.27f, 0.32f));
             UnityEngine.Object.DestroyImmediate(vabTrim.GetComponent<BoxCollider>());
             UnityEngine.Object.DestroyImmediate(vabDoor.GetComponent<BoxCollider>());
-            Report.AppendLine("[S1] VAB 总装厂房 45x50x30m");
+            Report.AppendLine("[S1] VAB 总装厂房 55x120x45m");
 
             // ---- 燃料储罐区（3个） ----
             var tankGo = AssetDatabase.LoadAssetAtPath<GameObject>(
@@ -206,9 +187,15 @@ namespace LunarQuest.EditorTools
             PlaceKenney("computer-wide", 2.6f, new Vector3(38f, 0f, -14f), Flat, "Console_C", false, null);
 
             // 林岚与玩家
-            PlaceNpc("ground_flight_controller", "林岚_飞控", new Vector3(35f, 0f, 0f), Flat,
+            var flightController = PlaceNpc("ground_flight_controller", "林岚_飞控", new Vector3(35f, 0f, 0f), Walkway,
                 "欢迎加入任务。跟我来，先熟悉操作，再去看发射。");
-            var player = BuildPlayer(new Vector3(35f, 0f, -5f), Flat);
+            if (flightController != null)
+            {
+                flightController.transform.rotation = Quaternion.identity;
+                flightController.gameObject.AddComponent<LaunchSiteTourGuide>();
+            }
+            var player = BuildPlayer(new Vector3(35f, 0f, 4f), Walkway);
+            player.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
             player.GetComponent<FirstPersonController>().gravityScale = 1f; // 地球重力
             var sciFont1 = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/NotoSansCJKsc-Regular.otf");
             var sci1 = new GameObject("SciFiHUD").AddComponent<SciFiHUD>();
@@ -219,7 +206,8 @@ namespace LunarQuest.EditorTools
             qm1.database = AssetDatabase.LoadAssetAtPath<TextAsset>(
                 "Assets/_Project/Content/Characters/dialogue.json");
             qm1.startEvent = "launch_tutorial_start";
-            player.GetComponent<HUDController>().SetQuest("【任务1/5】走近林岚按 E 交谈，学习基本操作");
+            player.GetComponent<HUDController>().SetQuest(
+                "与飞控林岚会合\n出生点正前方：面向林岚，靠近后按 E 交谈");
 
             const string scenePath = "Assets/_Project/Scenes/S1_LaunchSite.unity";
             EditorSettings.serializationMode = SerializationMode.ForceText;
@@ -228,12 +216,242 @@ namespace LunarQuest.EditorTools
             EditorSceneManager.SaveScene(scene, scenePath);
             RenderPreviewsAt("s1", new[]
             {
-                (new Vector3(75f, 32f, 2f), new Vector3(0f, 45f, -46f)),   // 火箭全景
-                (new Vector3(35f, 4f, -2f), new Vector3(8f, 18f, -40f)),    // 玩家视角望向火箭
+                (new Vector3(125f, 90f, 105f), new Vector3(0f, 12f, -35f)), // 发射场与海岸总体布局
+                (new Vector3(35f, 3f, 5f), new Vector3(38f, 2f, -18f)),     // 玩家出生点与首段导览路
             });
             Directory.CreateDirectory("Logs");
             File.WriteAllText("Logs/s1_report.txt", Report.ToString());
             Debug.Log("[WhiteboxBuilder] S1 发射场搭建完成\n" + Report);
+        }
+
+        static void BuildLaunchTerrainLayers(TerrainData terrain)
+        {
+            const string grassTexturePath = "Assets/_Project/Art/Textures/T_Grass.png";
+            const string soilTexturePath = "Assets/_Project/Art/Textures/T_CoastalSoil.png";
+            WriteNoiseTexture(grassTexturePath, new Color(0.16f, 0.26f, 0.13f), 0.04f, 42);
+            WriteNoiseTexture(soilTexturePath, new Color(0.42f, 0.30f, 0.19f), 0.055f, 73);
+
+            TerrainLayer grass = LoadOrCreateTerrainLayer(
+                "Assets/_Project/Art/Textures/TL_EarthGrass.asset", grassTexturePath, new Vector2(18f, 18f));
+            TerrainLayer soil = LoadOrCreateTerrainLayer(
+                "Assets/_Project/Art/Textures/TL_CoastalSoil.asset", soilTexturePath, new Vector2(14f, 14f));
+            terrain.terrainLayers = new[] { grass, soil };
+            terrain.alphamapResolution = 512;
+
+            int resolution = terrain.alphamapResolution;
+            var weights = new float[resolution, resolution, 2];
+            for (int z = 0; z < resolution; z++)
+                for (int x = 0; x < resolution; x++)
+                {
+                    float wx = x / (resolution - 1f) * 800f - 400f;
+                    float wz = z / (resolution - 1f) * 800f - 400f;
+                    float padDistance = Vector2.Distance(new Vector2(wx, wz), new Vector2(0f, -46f));
+                    float operations = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(65f, 145f, padDistance));
+                    float coast = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-185f, -340f, wz));
+                    float variation = (Mathf.PerlinNoise(wx * 0.025f + 17f, wz * 0.025f + 91f) - 0.5f) * 0.14f;
+                    float soilWeight = Mathf.Clamp01(0.16f + operations * 0.36f + coast * 0.78f + variation);
+                    weights[z, x, 0] = 1f - soilWeight;
+                    weights[z, x, 1] = soilWeight;
+                }
+            terrain.SetAlphamaps(0, 0, weights);
+            EditorUtility.SetDirty(grass);
+            EditorUtility.SetDirty(soil);
+            Report.AppendLine("[S1 地表] 热带湿地草色 + 滨海土壤双层混合，不再使用单一草原纹理");
+        }
+
+        static void WriteNoiseTexture(string path, Color baseColor, float variation, int seed)
+        {
+            var texture = new Texture2D(64, 64, TextureFormat.RGB24, false);
+            var random = new System.Random(seed);
+            for (int y = 0; y < texture.height; y++)
+                for (int x = 0; x < texture.width; x++)
+                {
+                    float offset = ((float)random.NextDouble() * 2f - 1f) * variation;
+                    texture.SetPixel(x, y, new Color(
+                        Mathf.Clamp01(baseColor.r + offset),
+                        Mathf.Clamp01(baseColor.g + offset),
+                        Mathf.Clamp01(baseColor.b + offset)));
+                }
+            texture.Apply();
+            File.WriteAllBytes(path, texture.EncodeToPNG());
+            UnityEngine.Object.DestroyImmediate(texture);
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+        }
+
+        static TerrainLayer LoadOrCreateTerrainLayer(string layerPath, string texturePath, Vector2 tileSize)
+        {
+            var layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(layerPath);
+            if (layer == null)
+            {
+                layer = new TerrainLayer();
+                AssetDatabase.CreateAsset(layer, layerPath);
+            }
+            layer.diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath);
+            layer.tileSize = tileSize;
+            return layer;
+        }
+
+        static void BuildLaunchGroundInfrastructure()
+        {
+            var root = new GameObject("LaunchGroundInfrastructure").transform;
+            Material concrete = LoadOrCreateMat("M_LaunchApron", new Color(0.36f, 0.38f, 0.39f));
+            Material asphalt = LoadOrCreateMat("M_ServiceAsphalt", new Color(0.075f, 0.085f, 0.09f));
+            Material marking = LoadOrCreateMat("M_RoadMarking", new Color(0.88f, 0.72f, 0.16f));
+            Material trench = LoadOrCreateMat("M_FlameTrench", new Color(0.035f, 0.04f, 0.045f));
+            Material sea = LoadOrCreateMat("M_CoastalWater", new Color(0.07f, 0.30f, 0.43f));
+            if (sea.HasProperty("_Smoothness")) sea.SetFloat("_Smoothness", 0.78f);
+            EditorUtility.SetDirty(sea);
+
+            // 发射核心区：方形硬化坪承载塔架、储罐和安全作业区，圆形平台稍后叠在其上。
+            CreateGroundBox("LaunchApron", root, new Vector3(0f, 0.08f, -46f),
+                new Vector3(96f, 0.16f, 82f), concrete, true);
+            CreateGroundBox("ControlApron", root, new Vector3(42f, 0.07f, -17f),
+                new Vector3(38f, 0.14f, 26f), concrete, true);
+
+            // 总装转运路与现场勤务道路。
+            CreateRoadSegment("VABTransferRoad", root, new Vector2(-66f, -49f), new Vector2(-40f, -46f),
+                15f, 0.18f, concrete, true);
+            CreateRoadSegment("FuelServiceRoad", root, new Vector2(26f, -57f), new Vector2(62f, -57f),
+                8f, 0.19f, asphalt, true);
+
+            // 导览路线按 NPC 的四个停靠点铺设，避免玩家和林岚在草地上穿行。
+            CreateRoadSegment("TourRoute_Start", root, new Vector2(35f, 7f), new Vector2(38f, -8f),
+                6.5f, 0.20f, asphalt, true);
+            CreateRoadSegment("TourRoute_Tracking", root, new Vector2(38f, -8f), new Vector2(54f, -10f),
+                6.5f, 0.20f, asphalt, true);
+            CreateRoadSegment("TourRoute_Viewing", root, new Vector2(54f, -10f), new Vector2(7f, 15f),
+                5.5f, 0.20f, asphalt, true);
+            CreateRoadSegment("TourRoute_Rocket", root, new Vector2(7f, 15f), new Vector2(0f, -15f),
+                5.5f, 0.20f, asphalt, true);
+
+            // 路线中心线让玩家更容易识别可行走区域。
+            CreateRoadSegment("TourLine_Start", root, new Vector2(35f, 7f), new Vector2(38f, -8f),
+                0.16f, 0.225f, marking, false);
+            CreateRoadSegment("TourLine_Tracking", root, new Vector2(38f, -8f), new Vector2(54f, -10f),
+                0.16f, 0.225f, marking, false);
+            CreateRoadSegment("TourLine_Viewing", root, new Vector2(54f, -10f), new Vector2(7f, 15f),
+                0.16f, 0.225f, marking, false);
+            CreateRoadSegment("TourLine_Rocket", root, new Vector2(7f, 15f), new Vector2(0f, -15f),
+                0.16f, 0.225f, marking, false);
+
+            // 暗色导流槽从火箭底部向南延伸；边缘不设碰撞，避免卡住导览路径。
+            CreateGroundBox("FlameTrench", root, new Vector3(0f, 0.19f, -67f),
+                new Vector3(9f, 0.06f, 38f), trench, false);
+            CreateGroundBox("FlameTrenchRim_L", root, new Vector3(-5.2f, 0.27f, -67f),
+                new Vector3(1.4f, 0.22f, 38f), concrete, false);
+            CreateGroundBox("FlameTrenchRim_R", root, new Vector3(5.2f, 0.27f, -67f),
+                new Vector3(1.4f, 0.22f, 38f), concrete, false);
+
+            // 南侧海岸远景，地形已在同一区域压低；海面不参与碰撞。
+            var water = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            water.name = "CoastalSea";
+            water.transform.SetParent(root, false);
+            water.transform.position = new Vector3(0f, 0.16f, -325f);
+            water.transform.localScale = new Vector3(80f, 1f, 15f);
+            water.GetComponent<Renderer>().sharedMaterial = sea;
+            UnityEngine.Object.DestroyImmediate(water.GetComponent<Collider>());
+
+            BuildCoastalVegetation(root);
+
+            Report.AppendLine("[S1 地面] 混凝土发射坪、总装转运路、勤务道路、导览步道与导流槽已建立");
+            Report.AppendLine("[S1 环境] 南侧增加滨海水面，外围加入低饱和湿地植被与热带树木轮廓");
+        }
+
+        static void BuildCoastalVegetation(Transform parent)
+        {
+            Material trunk = LoadOrCreateMat("M_CoastalTrunk", new Color(0.30f, 0.22f, 0.13f));
+            Material leaves = LoadOrCreateMat("M_CoastalLeaves", new Color(0.12f, 0.28f, 0.12f));
+            Material shrubs = LoadOrCreateMat("M_CoastalShrubs", new Color(0.10f, 0.23f, 0.10f));
+            var vegetation = new GameObject("CoastalVegetation").transform;
+            vegetation.SetParent(parent, false);
+            var random = new System.Random(20261120);
+            Terrain terrain = Terrain.activeTerrain;
+
+            int palmCount = 0;
+            for (int attempt = 0; attempt < 160 && palmCount < 20; attempt++)
+            {
+                float x = Mathf.Lerp(-280f, 280f, (float)random.NextDouble());
+                float z = Mathf.Lerp(-235f, 190f, (float)random.NextDouble());
+                if (Vector2.Distance(new Vector2(x, z), new Vector2(0f, -46f)) < 135f) continue;
+                float y = terrain != null ? terrain.SampleHeight(new Vector3(x, 0f, z)) : 0f;
+                BuildStylizedPalm(vegetation, new Vector3(x, y, z),
+                    0.85f + (float)random.NextDouble() * 0.45f,
+                    (float)random.NextDouble() * 360f, trunk, leaves, palmCount);
+                palmCount++;
+            }
+
+            int shrubCount = 0;
+            for (int attempt = 0; attempt < 180 && shrubCount < 32; attempt++)
+            {
+                float x = Mathf.Lerp(-300f, 300f, (float)random.NextDouble());
+                float z = Mathf.Lerp(-240f, 220f, (float)random.NextDouble());
+                if (Vector2.Distance(new Vector2(x, z), new Vector2(0f, -46f)) < 110f) continue;
+                float y = terrain != null ? terrain.SampleHeight(new Vector3(x, 0f, z)) : 0f;
+                var shrub = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                shrub.name = "WetlandShrub_" + shrubCount.ToString("00");
+                shrub.transform.SetParent(vegetation, false);
+                shrub.transform.position = new Vector3(x, y + 0.65f, z);
+                float size = 1.6f + (float)random.NextDouble() * 2.4f;
+                shrub.transform.localScale = new Vector3(size, 0.55f + size * 0.12f, size * 0.8f);
+                shrub.GetComponent<Renderer>().sharedMaterial = shrubs;
+                UnityEngine.Object.DestroyImmediate(shrub.GetComponent<Collider>());
+                shrubCount++;
+            }
+        }
+
+        static void BuildStylizedPalm(Transform parent, Vector3 position, float scale, float yaw,
+            Material trunkMaterial, Material leafMaterial, int index)
+        {
+            var root = new GameObject("CoastalPalm_" + index.ToString("00")).transform;
+            root.SetParent(parent, false);
+            root.position = position;
+            root.rotation = Quaternion.Euler(0f, yaw, 0f);
+            root.localScale = Vector3.one * scale;
+
+            var trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            trunk.name = "Trunk";
+            trunk.transform.SetParent(root, false);
+            trunk.transform.localPosition = new Vector3(0f, 3.2f, 0f);
+            trunk.transform.localScale = new Vector3(0.28f, 3.2f, 0.28f);
+            trunk.GetComponent<Renderer>().sharedMaterial = trunkMaterial;
+            UnityEngine.Object.DestroyImmediate(trunk.GetComponent<Collider>());
+
+            for (int i = 0; i < 6; i++)
+            {
+                var leaf = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                leaf.name = "Leaf_" + i;
+                leaf.transform.SetParent(root, false);
+                leaf.transform.localPosition = new Vector3(0f, 6.45f, 0f);
+                leaf.transform.localScale = new Vector3(0.5f, 0.10f, 3.2f);
+                leaf.transform.localRotation = Quaternion.Euler(12f, i * 60f, 0f);
+                leaf.GetComponent<Renderer>().sharedMaterial = leafMaterial;
+                UnityEngine.Object.DestroyImmediate(leaf.GetComponent<Collider>());
+            }
+        }
+
+        static GameObject CreateGroundBox(string name, Transform parent, Vector3 position, Vector3 size,
+            Material material, bool keepCollider)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.position = position;
+            go.transform.localScale = size;
+            go.GetComponent<Renderer>().sharedMaterial = material;
+            if (!keepCollider) UnityEngine.Object.DestroyImmediate(go.GetComponent<Collider>());
+            return go;
+        }
+
+        static GameObject CreateRoadSegment(string name, Transform parent, Vector2 start, Vector2 end,
+            float width, float surfaceY, Material material, bool keepCollider)
+        {
+            Vector2 delta = end - start;
+            var road = CreateGroundBox(name, parent,
+                new Vector3((start.x + end.x) * 0.5f, surfaceY * 0.5f, (start.y + end.y) * 0.5f),
+                new Vector3(width, surfaceY, delta.magnitude), material, keepCollider);
+            if (delta.sqrMagnitude > 0.001f)
+                road.transform.rotation = Quaternion.LookRotation(new Vector3(delta.x, 0f, delta.y));
+            return road;
         }
 
         [MenuItem("工具/月征/搭建全部场景")]
@@ -241,6 +459,117 @@ namespace LunarQuest.EditorTools
         {
             BuildLaunchSite();
             BuildAll();
+        }
+
+        static void BuildMissionRocket(Vector3 padTop, float scale)
+        {
+            var white = AssetDatabase.LoadAssetAtPath<Material>(
+                "Assets/_Project/Cinematics/Module4/Materials/Ceramic.mat") ??
+                LoadOrCreateMat("M_MissionRocketWhite", new Color(0.88f, 0.90f, 0.92f));
+            var dark = AssetDatabase.LoadAssetAtPath<Material>(
+                "Assets/_Project/Cinematics/Module4/Materials/Carbon.mat") ??
+                LoadOrCreateMat("M_MissionRocketDark", new Color(0.045f, 0.06f, 0.08f));
+            var blue = AssetDatabase.LoadAssetAtPath<Material>(
+                "Assets/_Project/Cinematics/Module4/Materials/MissionBlue.mat") ??
+                LoadOrCreateMat("M_MissionRocketBlue", new Color(0.015f, 0.22f, 0.40f));
+
+            var root = new GameObject("MissionRocket_LQ01");
+            // S2 原型的发动机钟罩最低点为 -1.15m；给缩放后的钟罩留出离台面间隙。
+            root.transform.position = padTop + Vector3.up * (1.4f * scale);
+            root.transform.localScale = Vector3.one * scale;
+
+            GameObject Part(string name, PrimitiveType type, Vector3 position, Vector3 partScale, Material material)
+            {
+                var part = GameObject.CreatePrimitive(type);
+                part.name = name;
+                part.transform.SetParent(root.transform, false);
+                part.transform.localPosition = position;
+                part.transform.localScale = partScale;
+                part.GetComponent<Renderer>().sharedMaterial = material;
+                UnityEngine.Object.DestroyImmediate(part.GetComponent<Collider>());
+                return part;
+            }
+
+            GameObject MeshPart(string name, string assetPath, Vector3 position, Material material)
+            {
+                var part = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+                part.transform.SetParent(root.transform, false);
+                part.transform.localPosition = position;
+                part.GetComponent<MeshFilter>().sharedMesh = AssetDatabase.LoadAssetAtPath<Mesh>(assetPath);
+                part.GetComponent<MeshRenderer>().sharedMaterial = material;
+                return part;
+            }
+
+            Part("Core Stage", PrimitiveType.Cylinder, new Vector3(0f, 16f, 0f), new Vector3(5.6f, 16f, 5.6f), white);
+            Part("Interstage Band", PrimitiveType.Cylinder, new Vector3(0f, 27f, 0f), new Vector3(5.66f, 0.7f, 5.66f), dark);
+            Part("Mission Band", PrimitiveType.Cylinder, new Vector3(0f, 20f, 0f), new Vector3(5.67f, 0.35f, 5.67f), blue);
+            MeshPart("Payload Fairing",
+                "Assets/_Project/Cinematics/Module4/Geometry/LQ01_Fairing.asset", Vector3.zero, white);
+            for (int i = 0; i < 4; i++)
+            {
+                float angle = i * Mathf.PI * 0.5f;
+                Vector3 offset = new Vector3(Mathf.Cos(angle) * 4.4f, 0f, Mathf.Sin(angle) * 4.4f);
+                Part("Booster_" + i, PrimitiveType.Cylinder, offset + Vector3.up * 11f,
+                    new Vector3(2.8f, 11f, 2.8f), white);
+                MeshPart("BoosterNose_" + i,
+                    "Assets/_Project/Cinematics/Module4/Geometry/LQ01_BoosterNose_" + i + ".asset",
+                    offset, white);
+                Part("EngineBell_" + i, PrimitiveType.Cylinder, offset + Vector3.down * 0.5f,
+                    new Vector3(2f, 0.65f, 2f), dark);
+            }
+
+            Bounds bounds = LocalBounds(root.transform);
+            var box = root.AddComponent<BoxCollider>();
+            box.center = root.transform.InverseTransformPoint(bounds.center);
+            box.size = new Vector3(bounds.size.x / scale, bounds.size.y / scale, bounds.size.z / scale);
+            GameObjectUtility.SetStaticEditorFlags(root,
+                StaticEditorFlags.BatchingStatic | StaticEditorFlags.OccluderStatic | StaticEditorFlags.OccludeeStatic);
+            Report.AppendLine($"[S1] LQ-01 与 S2 同造型，高 {bounds.size.y:F0}m");
+        }
+
+        static void BuildLaunchServiceTower(Vector3 basePosition, float height)
+        {
+            var root = new GameObject("LaunchServiceTower");
+            root.transform.position = basePosition;
+            var steel = LoadOrCreateMat("M_ServiceTowerSteel", new Color(0.42f, 0.16f, 0.09f));
+            var deck = LoadOrCreateMat("M_ServiceTowerDeck", new Color(0.24f, 0.27f, 0.30f));
+
+            GameObject Beam(string name, Vector3 localPosition, Vector3 size, Material material)
+            {
+                var beam = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                beam.name = name;
+                beam.transform.SetParent(root.transform, false);
+                beam.transform.localPosition = localPosition;
+                beam.transform.localScale = size;
+                beam.GetComponent<Renderer>().sharedMaterial = material;
+                UnityEngine.Object.DestroyImmediate(beam.GetComponent<Collider>());
+                return beam;
+            }
+
+            float halfX = 4.5f, halfZ = 5.5f;
+            for (int x = -1; x <= 1; x += 2)
+                for (int z = -1; z <= 1; z += 2)
+                    Beam("Column", new Vector3(x * halfX, height * 0.5f, z * halfZ),
+                        new Vector3(0.8f, height, 0.8f), steel);
+
+            int levelCount = Mathf.FloorToInt(height / 12f);
+            for (int level = 1; level <= levelCount; level++)
+            {
+                float y = Mathf.Min(level * 12f, height - 3f);
+                Beam("Deck_" + level, new Vector3(0f, y, 0f),
+                    new Vector3(10.5f, 0.65f, 12.5f), deck);
+                Beam("Cross_X_" + level, new Vector3(0f, y - 3f, halfZ),
+                    new Vector3(10f, 0.45f, 0.45f), steel);
+                Beam("Cross_Z_" + level, new Vector3(halfX, y - 3f, 0f),
+                    new Vector3(0.45f, 0.45f, 12f), steel);
+                if (level >= 2 && level <= levelCount - 1)
+                {
+                    // 塔位于火箭东侧，勤务臂向西伸到箭体附近。
+                    Beam("ServiceArm_" + level, new Vector3(-10.5f, y + 0.7f, 0f),
+                        new Vector3(12.5f, 0.55f, 1.2f), steel);
+                }
+            }
+            Report.AppendLine($"[S1] 发射勤务塔 {height:F0}m，平台 {levelCount} 层");
         }
 
         // 按高度归一化摆放（竖直构件：火箭、塔架等）
@@ -284,8 +613,7 @@ namespace LunarQuest.EditorTools
 
             BuildLighting();
             BuildSkybox();
-            // 月面物理：全局重力设为 1/6（月球车与掉落物一致，同时大幅降低摩擦拖滞）
-            Physics.gravity = new Vector3(0f, -9.81f / 6f, 0f);
+            // 月面重力由 SceneFlow 在运行时按场景切换，生成器不再污染项目全局物理设置。
             Terrain terrain = BuildTerrain();
             float Ground(Vector3 p) => terrain.SampleHeight(p) + terrain.transform.position.y;
 
@@ -297,9 +625,17 @@ namespace LunarQuest.EditorTools
             BuildSealWall(Ground);
             BuildAirlockPortal(new Vector3(4f, 0f, 129.0f), 0f, 13.2f, 5.4f, Ground, "Portal_S");
             BuildAirlockPortal(new Vector3(-58f, 0f, 190f), 90f, 18f, 9.2f, Ground, "Portal_W");
-            PlaceNpc("base_coordinator", "周航_协调员", new Vector3(-1f, 0f, 175f), Ground, "去 3 号陨石坑，采三份月壤样本回来交给我。");
-            PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(2f, 0f, 179f), Ground, "样本先放我这里，参观完科普厅再走。");
-            PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(15f, 0f, 115f), Ground, "车就在外面，月面路滑，慢点开。");
+            var coordinator = PlaceNpc("base_coordinator", "周航_协调员", new Vector3(-1f, 0f, 175f), Ground,
+                "去 3 号陨石坑，采三份月壤样本回来交给我。");
+            var scientist = PlaceNpc("lunar_scientist", "许青_科学家", new Vector3(2f, 0f, 179f), Ground,
+                "样本先放我这里，参观完科普厅再走。");
+            // 陈越的角色资产没有舱外服，因此放到气闸后的加压大厅。
+            var technician = PlaceNpc("maintenance_technician", "陈越_维护员", new Vector3(7f, 0f, 177f), Ground,
+                "探测车已经检查完毕，出舱后可以直接上车。");
+            // 三名队员面向南侧入口，玩家进厅后能立即看到正面。
+            if (coordinator != null) coordinator.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            if (scientist != null) scientist.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+            if (technician != null) technician.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
             BuildSampleRocks(Ground);
             BuildRockField(Ground);
             BuildMinimap(player.transform);
@@ -315,7 +651,8 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 "Assets/_Project/Content/Characters/dialogue.json");
             qm.startEvent = "eva_tutorial_start";
             qmGo.transform.position = Vector3.zero;
-            player.GetComponent<HUDController>().SetQuest("E 开门/交谈/查看展品 · F 上下月球车 · V 切换视角");
+            player.GetComponent<HUDController>().SetQuest(
+                "前往广寒站\n按 Q 打开导航；进入中央穹顶，找到任务协调员周航并按 E 交谈");
 
             const string scenePath = "Assets/_Project/Scenes/S4_MoonSurface_Whitebox.unity";
             EditorSettings.serializationMode = SerializationMode.ForceText;
@@ -585,7 +922,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             float y0 = ground(new Vector3(cx, 0f, cz));
 
             // 滑动门：穹顶南门洞（z = cz-7.5）
-            var panelMat = LoadOrCreateMat("M_DoorPanel", new Color(0.80f, 0.45f, 0.15f));
+            var panelMat = LoadOrCreateMat("M_DoorPanelDark", new Color(0.08f, 0.14f, 0.20f));
             var doorRoot = new GameObject("DomeDoor");
             doorRoot.transform.position = new Vector3(cx, y0, cz - 14.7f);
             GameObject Panel(string n, float xOff)
@@ -607,7 +944,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 var dr = new GameObject(n);
                 dr.transform.position = dpos;
                 dr.transform.rotation = Quaternion.Euler(0f, dyaw, 0f);
-                var dpMat = LoadOrCreateMat("M_DoorPanel", new Color(0.80f, 0.45f, 0.15f));
+                var dpMat = LoadOrCreateMat("M_DoorPanelDark", new Color(0.08f, 0.14f, 0.20f));
                 GameObject DPanel(string pn, float off)
                 {
                     var dp = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -693,20 +1030,22 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
 
             // 展台 ×3 环绕全息台（避开南门/西走廊/北走廊三个方向）
             PlaceStand(0, new Vector3(0.6f, 0f, 182.6f), y0,
-                "阿波罗月球车（LRV）",
-                "1971–1972 年阿波罗 15/16/17 号任务使用，电池驱动四轮月面车，" +
-                "月面最高时速约 18 公里，三台车累计行驶约 90 公里。",
-                ModelDir + "/SM_Rover_Apollo.glb", 3.4f);
+                "阿波罗载人登月舱",
+                "NASA 官方三维模型。阿波罗登月舱由下降级与上升级组成，" +
+                "四条着陆支腿用于月面稳定着陆，上升级承担宇航员离开月面的任务。" +
+                "模型来源：NASA / Michael D. Carbajal。",
+                "Assets/_Project/Art/Models/NASA/Apollo Lunar Module/Apollo Lunar Module.glb", 2.6f);
             PlaceStand(1, new Vector3(0.6f, 0f, 173.4f), y0,
                 "玉兔二号月球车",
                 "嫦娥四号任务 2019 年实现人类首次月球背面软着陆巡视。" +
                 "玉兔二号设计寿命 3 个月，实际工作超过 5 年。太阳能板供电，六轮驱动。",
                 "Assets/_Project/Art/Models/玉兔.fbx", 2.6f);
             PlaceStand(2, new Vector3(-8.6f, 0f, 182.6f), y0,
-                "月面着陆舱（嫦娥五号系列）",
-                "2020 年嫦娥五号完成我国首次地外天体采样返回，" +
-                "带回月壤样品 1731 克。着陆舱负责月面着陆与上升器发射。",
-                "Assets/_Project/Art/Models/Sketchfab/luna25_lander/scene.gltf", 2.6f);
+                "月球勘测轨道器（LRO）",
+                "NASA 官方三维模型。LRO 于 2009 年发射，通过高分辨率成像、激光测高" +
+                "与雷达观测绘制月球地形、识别极区水冰线索，并支持后续着陆点选择。" +
+                "模型来源：NASA / Christopher R. Meaney。",
+                "Assets/_Project/Art/Models/NASA/Lunar Reconnaissance Orbiter/Lunar Reconnaissance Orbiter.glb", 2.2f);
 
             Report.AppendLine("[展览区] 并入穹顶大厅：南门滑动门 + 展台×3 环绕全息台；绿色指挥室内景已拆除");
         }
@@ -721,7 +1060,8 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             if (!string.IsNullOrEmpty(miniPath))
             {
                 var mini = PlaceModel(miniPath, miniSize, pos, _ => topY, "ExhibitMini_" + i, false, false);
-                FixMetallicMaterials(mini);
+                // NASA 官方 glTF 已有正确 PBR 材质，不再强制覆盖为哑光色。
+                if (!miniPath.Contains("/NASA/")) FixMetallicMaterials(mini);
                 if (mini != null)
                 {
                     // 模型挂为桌子子物体 + 加碰撞体：玩家准星打到模型也能触发交互提示
@@ -740,6 +1080,8 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             stand.exhibitTitle = title;
             stand.exhibitDesc = desc;
             stand.prompt = $"按 E 查看：{title}";
+            // 旧二维码保留兼容：AR 端会将旧 APOLLO_LRV 重定向到 APOLLO_LM，
+            // 并将旧 LUNA25_CAPSULE 重定向到 LRO。
             string[] qrNames = { "QR_Apollo_LRV", "QR_Yutu_Rover", "QR_Luna25_Capsule" };
             stand.qrTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(
                 $"Assets/_Project/Art/Textures/QR/{qrNames[i]}.png");
@@ -801,7 +1143,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             domeLight2.transform.position = new Vector3(-4f, by + 4.4f, 178f);
 
             // 气闸门（玻璃罩半球防护体系：人行南闸双道门 + 车行东闸大门，均自动感应）
-            var panelMat2 = LoadOrCreateMat("M_DoorPanel", new Color(0.80f, 0.45f, 0.15f));
+            var panelMat2 = LoadOrCreateMat("M_DoorPanelDark", new Color(0.08f, 0.14f, 0.20f));
             void AutoDoor(string n, Vector3 pos, float w, float h, float thick, float xOff, float range, float spd, float yaw = 0f)
             {
                 var root = new GameObject(n);
@@ -946,39 +1288,70 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 AssetDatabase.Refresh();
             }
             AssetDatabase.CreateAsset(td, terrainAsset);
-            // 高精度月面地形模型（视觉增强层，叠在 Terrain 上方）
-            var terrainModel = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/_Project/Art/Models/Sketchfab/lunar_terrain_detailed/scene.gltf");
-            if (terrainModel != null)
-            {
-                var tm = UnityEngine.Object.Instantiate(terrainModel);
-                tm.name = "LunarTerrainVisual";
-                tm.transform.position = new Vector3(0f, 1f, 170f); // 略高于Terrain表面
-                tm.transform.localScale = Vector3.one * 2.5f; // 放大匹配 500m 地图
-                tm.SetActive(true);
-                Report.AppendLine("[地形] NASA 级月面视觉层已叠加（48.7 万面陨石坑地形）");
-            }
-            // 着陆区放指令舱（组员交付的阿波罗CM模型）
-            var cmGo = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/_Project/Art/Models/月球操作仓.fbx");
-            if (cmGo != null)
-            {
-                var cm = UnityEngine.Object.Instantiate(cmGo);
-                cm.name = "LandedCapsule";
-                Bounds cb2 = default; bool cf2 = true;
-                foreach (var cr in cm.GetComponentsInChildren<Renderer>())
-                { if (cf2) { cb2 = cr.bounds; cf2 = false; } else cb2.Encapsulate(cr.bounds); }
-                float cs = 4f / Mathf.Max(cb2.size.y, 0.01f); // 高度归一到4m
-                cm.transform.localScale = Vector3.one * cs;
-                cb2 = default; cf2 = true;
-                foreach (var cr in cm.GetComponentsInChildren<Renderer>())
-                { if (cf2) { cb2 = cr.bounds; cf2 = false; } else cb2.Encapsulate(cr.bounds); }
-                cm.transform.position = new Vector3(120f, 2f - cb2.min.y, -40f); // 着陆区已压平至2m
-                FixMetallicMaterials(cm);
-                Report.AppendLine("[着陆区] 指令舱已放置（组员交付 Apollo CM，4m）");
-            }
+            // 只保留一套可碰撞 Terrain，避免高模视觉地形与物理地形错位、穿插和重复绘制。
+            BuildMissionLander(new Vector3(LandingFlat.x, SampleHeight(LandingFlat.x, LandingFlat.y), LandingFlat.y));
             Report.AppendLine($"[地形] 500x500m；3号坑@({CraterMain.x},{CraterMain.y}) r={CraterMainR} d={CraterMainD}m；基地平区@({BaseFlat.x},{BaseFlat.y}) r={BaseFlatR}m；着陆区@({LandingFlat.x},{LandingFlat.y}) r={LandingFlatR}m");
             return go.GetComponent<Terrain>();
+        }
+
+        static void BuildMissionLander(Vector3 groundPosition)
+        {
+            var root = new GameObject("LandedMissionLander");
+            root.transform.position = groundPosition;
+            var white = LoadOrCreateMat("M_LanderWhite", new Color(0.78f, 0.81f, 0.84f));
+            var gold = LoadOrCreateMat("M_LanderFoil", new Color(0.64f, 0.43f, 0.12f));
+            var dark = LoadOrCreateMat("M_LanderDark", new Color(0.08f, 0.11f, 0.14f));
+            var glass = LoadOrCreateMat("M_LanderWindow", new Color(0.03f, 0.18f, 0.27f));
+
+            GameObject Part(PrimitiveType type, string name, Vector3 position, Vector3 size,
+                Material material, bool keepCollider = false, Quaternion? rotation = null)
+            {
+                var part = GameObject.CreatePrimitive(type);
+                part.name = name;
+                part.transform.SetParent(root.transform, false);
+                part.transform.localPosition = position;
+                part.transform.localScale = size;
+                if (rotation.HasValue) part.transform.localRotation = rotation.Value;
+                part.GetComponent<Renderer>().sharedMaterial = material;
+                if (!keepCollider) UnityEngine.Object.DestroyImmediate(part.GetComponent<Collider>());
+                return part;
+            }
+
+            void Beam(string name, Vector3 a, Vector3 b, float width, Material material)
+            {
+                Vector3 direction = b - a;
+                Part(PrimitiveType.Cube, name, (a + b) * 0.5f,
+                    new Vector3(width, width, direction.magnitude), material, false,
+                    Quaternion.LookRotation(direction.normalized));
+            }
+
+            Part(PrimitiveType.Cylinder, "DescentStage", new Vector3(0f, 1.65f, 0f),
+                new Vector3(3.1f, 0.55f, 3.1f), gold, true);
+            Part(PrimitiveType.Cylinder, "AscentCabin", new Vector3(0f, 3.55f, 0f),
+                new Vector3(1.75f, 1.35f, 1.75f), white, true);
+            Part(PrimitiveType.Sphere, "CabinRoof", new Vector3(0f, 4.95f, 0f),
+                new Vector3(1.7f, 0.75f, 1.7f), white);
+            Part(PrimitiveType.Cube, "FrontWindow", new Vector3(0f, 4.0f, -1.78f),
+                new Vector3(1.45f, 0.72f, 0.08f), glass);
+            Part(PrimitiveType.Cube, "Ladder", new Vector3(0f, 1.45f, -3.15f),
+                new Vector3(0.85f, 2.5f, 0.12f), dark);
+            Part(PrimitiveType.Cylinder, "AntennaMast", new Vector3(0.65f, 6.0f, 0.15f),
+                new Vector3(0.08f, 0.9f, 0.08f), dark);
+            Part(PrimitiveType.Cylinder, "AntennaDish", new Vector3(0.65f, 6.9f, 0.15f),
+                new Vector3(0.75f, 0.08f, 0.75f), white, false,
+                Quaternion.Euler(18f, 0f, 0f));
+
+            for (int x = -1; x <= 1; x += 2)
+                for (int z = -1; z <= 1; z += 2)
+                {
+                    Vector3 inner = new Vector3(x * 2.15f, 1.8f, z * 2.15f);
+                    Vector3 outer = new Vector3(x * 4.25f, 0.35f, z * 4.25f);
+                    Beam("LandingLeg", inner, outer, 0.22f, dark);
+                    Part(PrimitiveType.Cylinder, "Footpad", new Vector3(outer.x, 0.12f, outer.z),
+                        new Vector3(0.75f, 0.09f, 0.75f), gold, true);
+                }
+
+            Report.AppendLine("[着陆区] LQ-01 任务着陆器已放置；不再把阿波罗指令舱当作月面着陆载具");
         }
 
         static float SampleHeight(float x, float z)
@@ -1024,40 +1397,40 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
         static TerrainLayer BuildTerrainLayer()
         {
             const string layerPath = "Assets/_Project/Art/Textures/TL_MoonLROC.asset";
-            var existingLayer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(layerPath);
-            if (existingLayer != null) return existingLayer;
-
-            // 优先用 NASA LROC 真实月面照片
+            // S3 和 S4 使用同一张 NASA LROC 月面照片，并且都让整张照片覆盖 500m 地形。
+            // 旧版本的 S4 图层资产曾保存为 80m 平铺；不能在发现旧资产后直接返回，
+            // 否则构建脚本中的 500m 设置永远不会写回，地面就会出现规则的重复方块。
             var lroc = AssetDatabase.LoadAssetAtPath<Texture2D>(
                 "Assets/_Project/Cinematics/Module4/Textures/NASA_Moon_LROC.jpg");
-            if (lroc != null)
+            if (lroc == null)
             {
-                var layer = new TerrainLayer
+                const string texPath = "Assets/_Project/Art/Textures/T_MoonFlat.png";
+                lroc = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
+                if (lroc == null)
                 {
-                    diffuseTexture = lroc,
-                    tileSize = new Vector2(500f, 500f), // 一整张贴图铺满500m地形，不重复 // 大铺贴，看清月面纹理
-                };
-                AssetDatabase.CreateAsset(layer, layerPath);
-                return layer;
+                    var tex = new Texture2D(8, 8, TextureFormat.RGB24, false);
+                    for (int i = 0; i < 64; i++)
+                        tex.SetPixel(i % 8, i / 8, new Color32(134, 132, 138, 255));
+                    tex.Apply();
+                    File.WriteAllBytes(texPath, tex.EncodeToPNG());
+                    AssetDatabase.ImportAsset(texPath);
+                    lroc = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath);
+                }
             }
 
-            // 后备：纯色
-            const string texPath = "Assets/_Project/Art/Textures/T_MoonFlat.png";
-            if (AssetDatabase.LoadAssetAtPath<Texture2D>(texPath) == null)
+            var layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(layerPath);
+            if (layer == null)
             {
-                var tex = new Texture2D(8, 8, TextureFormat.RGB24, false);
-                for (int i = 0; i < 64; i++) tex.SetPixel(i % 8, i / 8, new Color32(134, 132, 138, 255));
-                tex.Apply();
-                File.WriteAllBytes(texPath, tex.EncodeToPNG());
-                AssetDatabase.ImportAsset(texPath);
+                layer = new TerrainLayer();
+                AssetDatabase.CreateAsset(layer, layerPath);
             }
-            var fallback = new TerrainLayer
-            {
-                diffuseTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(texPath),
-                tileSize = new Vector2(30f, 30f),
-            };
-            AssetDatabase.CreateAsset(fallback, layerPath);
-            return fallback;
+            layer.diffuseTexture = lroc;
+            layer.tileSize = new Vector2(MapSize, MapSize);
+            layer.tileOffset = Vector2.zero;
+            layer.metallic = 0f;
+            layer.smoothness = 0f;
+            EditorUtility.SetDirty(layer);
+            return layer;
         }
 
         static GameObject BuildPlayer(Vector3 pos, Func<Vector3, float> ground)
@@ -1075,7 +1448,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             cc.slopeLimit = 50f;
             cc.stepOffset = 0.4f;
             player.AddComponent<FirstPersonController>();
-            player.AddComponent<PlayerInteractor>().interactRange = 5f;
+            player.AddComponent<PlayerInteractor>().interactRange = 6.5f;
             player.AddComponent<HUDController>();
             player.transform.position = new Vector3(pos.x, ground(pos) + 1.05f, pos.z);
 
@@ -1090,16 +1463,18 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             var bodyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(CharDir + "/player_astronaut.glb");
             if (bodyPrefab != null)
             {
+                var bodyHolder = new GameObject("ThirdPersonBody");
+                bodyHolder.transform.SetParent(player.transform, false);
                 var body = (GameObject)PrefabUtility.InstantiatePrefab(bodyPrefab);
-                body.name = "AstronautBody";
-                body.transform.SetParent(player.transform, false);
+                body.name = "AstronautModel";
+                body.transform.SetParent(bodyHolder.transform, false);
                 Bounds bb = LocalBounds(body.transform);
                 float bodyScale = 1.8f / Mathf.Max(bb.size.y, 0.01f);
                 body.transform.localScale = Vector3.one * bodyScale;
                 bb = LocalBounds(body.transform);
                 body.transform.localPosition += Vector3.up * ((player.transform.position.y - 0.9f) - bb.min.y);
-                body.SetActive(false);
-                player.GetComponent<FirstPersonController>().thirdPersonBody = body;
+                bodyHolder.SetActive(false);
+                player.GetComponent<FirstPersonController>().thirdPersonBody = bodyHolder;
                 // 动画控制器：idle / walk 两个状态
                 var pAnim = body.GetComponent<Animator>() ?? body.AddComponent<Animator>();
                 string pCtrlPath = "Assets/_Project/Art/Animations/AC_Player_Locomotion.controller";
@@ -1120,19 +1495,21 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                     pCtrl = newCtrl;
                 }
                 pAnim.runtimeAnimatorController = pCtrl;
+                pAnim.applyRootMotion = false;
+                pAnim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             }
-            Report.AppendLine("[玩家] 出生于广寒站中央；第一人称 + E 交互 + OnGUI 调试 HUD + V 第三人称");
+            Report.AppendLine("[玩家] 第一人称 + E 交互 + OnGUI 调试 HUD + V 第三人称");
             return player;
         }
 
         static void BuildRover(Vector3 pos, Func<Vector3, float> ground, Transform player)
         {
-            // 优先用经 Blender 转换瘦身的阿波罗真模型（SM_Rover_Apollo.glb），其次原始 FBX，最后白盒
-            string path = ModelDir + "/SM_Rover_Apollo.glb";
+            // NASA SEV 是面向长期月面任务的加压探测车概念，比阿波罗 LRV 更符合未来基地设定。
+            string path = "Assets/_Project/Art/Models/NASA/Space Exploration Vehicle/Space Exploration Vehicle.glb";
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab == null)
             {
-                path = ModelDir + "/阿波罗月球车.fbx";
+                path = ModelDir + "/SM_Rover_Apollo.glb";
                 prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             }
             GameObject rover;
@@ -1143,26 +1520,33 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 rover.transform.position = Vector3.zero;
                 rover.transform.localScale = Vector3.one;
                 Bounds b0 = LocalBounds(rover.transform);
-                scale = 3.2f / Mathf.Max(Mathf.Max(b0.size.x, b0.size.z), 0.01f);
+                scale = 6.4f / Mathf.Max(Mathf.Max(b0.size.x, b0.size.z), 0.01f);
                 rover.transform.localScale = Vector3.one * scale;
-                Report.AppendLine($"[月球车] 阿波罗真模型 包围盒 {b0.size:F1}m → 缩放 {scale:F3} 至 3.2m");
+                Report.AppendLine($"[探测车] NASA SEV 官方模型 包围盒 {b0.size:F1}m → 缩放 {scale:F3} 至 6.4m");
             }
             else
             {
                 rover = BuildProceduralRover();
-                Report.AppendLine("[月球车] 阿波罗 FBX 待瘦身（导入超时已摘除），改用白盒车身，脚本挂载完全一致");
+                Report.AppendLine("[探测车] NASA SEV 与阿波罗备用模型均缺失，使用程序化白盒车");
             }
-            rover.name = "Rover";
+            rover.name = "Rover_SEV";
             Bounds b1 = LocalBounds(rover.transform);
             rover.transform.position = new Vector3(pos.x, ground(pos) - b1.min.y + 0.05f, pos.z);
 
             var box = rover.AddComponent<BoxCollider>();
-            box.center = new Vector3(b1.center.x / scale, b1.center.y / scale, b1.center.z / scale);
-            box.size = new Vector3(b1.size.x / scale, b1.size.y / scale, b1.size.z / scale);
+            // 物理包围只覆盖底盘主体，不用整个驾驶舱高度作为落地面。
+            Vector3 localSize = b1.size / Mathf.Max(scale, 0.0001f);
+            Vector3 localCenter = b1.center / Mathf.Max(scale, 0.0001f);
+            float localMinY = b1.min.y / Mathf.Max(scale, 0.0001f);
+            // 收窄并抬高隐形底盘碰撞体，保留视觉轮胎接地，同时避免长方体前缘铲进小坡。
+            box.center = new Vector3(localCenter.x, localMinY + localSize.y * 0.24f, localCenter.z);
+            box.size = new Vector3(localSize.x * 0.74f, localSize.y * 0.32f, localSize.z * 0.76f);
             box.sharedMaterial = LoadOrCreatePhysicMaterial();
             var rb = rover.AddComponent<Rigidbody>();
             rb.mass = 800f;
             rb.interpolation = RigidbodyInterpolation.Interpolate;
+            // 无人驾驶时把车作为停驻设备锁定；上车后 VehicleEnterExit 会恢复动态刚体。
+            rb.isKinematic = true;
             rover.AddComponent<RoverController>();
 
             var camGo = new GameObject("RoverCamera");
@@ -1176,6 +1560,7 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             var enterExit = rover.AddComponent<VehicleEnterExit>();
             enterExit.player = player;
             enterExit.roverCamera = rc;
+            rover.AddComponent<RoverSampleInteractor>().interactRange = 6.5f;
 
             var door = rover.AddComponent<VehicleDoor>();
             door.vehicle = enterExit;
@@ -1310,14 +1695,14 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             return go;
         }
 
-        static void PlaceNpc(string fileId, string display, Vector3 pos, Func<Vector3, float> ground, string line)
+        static NpcInteractor PlaceNpc(string fileId, string display, Vector3 pos, Func<Vector3, float> ground, string line)
         {
             string path = $"{CharDir}/{fileId}.glb";
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab == null)
             {
                 Debug.LogError("[WhiteboxBuilder] 找不到 " + path);
-                return;
+                return null;
             }
             var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             go.name = "NPC_" + display;
@@ -1337,12 +1722,14 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             float sy = Mathf.Max(Mathf.Abs(scale.y), 0.0001f);
             float sxz = Mathf.Max(Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z)), 0.0001f);
             float height = Mathf.Max(1.2f, placedBounds.size.y / sy);
-            float radius = Mathf.Clamp(Mathf.Min(placedBounds.size.x, placedBounds.size.z) * 0.35f / sxz, 0.25f, height * 0.35f);
+            float radius = Mathf.Clamp(Mathf.Min(placedBounds.size.x, placedBounds.size.z) * 0.45f / sxz,
+                0.32f, height * 0.4f);
             var capsule = go.AddComponent<CapsuleCollider>();
             capsule.center = go.transform.InverseTransformPoint(placedBounds.center);
-            capsule.height = Mathf.Max(height, radius * 2f);
+            capsule.height = Mathf.Max(height + 0.2f, radius * 2f);
             capsule.radius = radius;
             Report.AppendLine($"[NPC] {display} @ ({pos.x:F0},{pos.z:F0})，idle/talk，E 可交互");
+            return npc;
         }
 
         static RuntimeAnimatorController BuildNpcController(string fileId, string glbPath)
@@ -1424,13 +1811,14 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
             var mat = AssetDatabase.LoadAssetAtPath<Material>(MoonMatPath);
             Vector3[] pts =
             {
-                new Vector3(-72f, 0f, 132f), new Vector3(-88f, 0f, 148f), new Vector3(-76f, 0f, 154f),
+                // 分布在三号坑东南、西侧和北侧喷出物区域，必须借助导航逐一寻找。
+                new Vector3(-54f, 0f, 118f), new Vector3(-112f, 0f, 143f), new Vector3(-78f, 0f, 174f),
             };
             string[] tags = { "A", "B", "C" };
             for (int i = 0; i < pts.Length; i++)
             {
                 var marker = new GameObject("SamplePoint_" + tags[i]);
-                marker.transform.position = pts[i];
+                marker.transform.position = new Vector3(pts[i].x, ground(pts[i]) + 0.15f, pts[i].z);
                 var p = pts[i];
 
                 var rock = PlaceKenney("rocksSmall", 0.9f, p, ground, "SampleRock_" + tags[i], true,
@@ -1438,17 +1826,20 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
                 if (rock != null)
                 {
                     var sr = rock.AddComponent<SampleRock>();
-                sr.pointId = "crater03_sample_" + tags[i].ToLowerInvariant();
-                sr.prompt = $"按 E 采集月壤样本（{i + 1}/3）";
+                    sr.pointId = "crater03_sample_" + tags[i].ToLowerInvariant();
+                    sr.prompt = $"按 E 采集月壤样本 · 勘测点 {tags[i]}";
+                    // 样本是交互目标而非路障；触发器仍可被视线检测，但不会卡住月球车底盘。
+                    foreach (Collider collider in rock.GetComponentsInChildren<Collider>())
+                        collider.isTrigger = true;
                 }
             }
             var trig = new GameObject("Crater03Trigger");
             var tcol = trig.AddComponent<BoxCollider>();
             tcol.isTrigger = true;
-            tcol.size = new Vector3(56f, 16f, 56f);
+            tcol.size = new Vector3(96f, 16f, 96f);
             trig.transform.position = new Vector3(-80f, ground(new Vector3(-80f, 0f, 140f)) + 6f, 140f);
             trig.AddComponent<AreaEvent>().eventName = "enter_crater03_sampling_area";
-            Report.AppendLine("[采样] 3 号坑 3 勘测点 + 进入采样区触发器（任务事件接入）");
+            Report.AppendLine("[采样] 3 号坑周边分散 3 勘测点 + 扩展采样区触发器（平板导航接入）");
         }
 
         static readonly string[] RockVariants = { "rocks", "rocksSmall", "rocksTall", "rocksOre", "meteorHalf" };
@@ -1475,31 +1866,15 @@ var sciFont = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Project/UI/Fonts/Noto
 
         static void BuildMinimap(Transform player)
         {
-            const string rtPath = "Assets/_Project/UI/RT_Minimap.renderTexture";
-            var rt = AssetDatabase.LoadAssetAtPath<RenderTexture>(rtPath);
-            if (rt == null)
-            {
-                rt = new RenderTexture(512, 512, 24, RenderTextureFormat.ARGB32)
-                {
-                    name = "RT_Minimap",
-                    antiAliasing = 4,
-                };
-                AssetDatabase.CreateAsset(rt, rtPath);
-            }
-
-            var camGo = new GameObject("MinimapCamera");
-            var cam = camGo.AddComponent<Camera>();
-            cam.orthographic = true;
-            cam.orthographicSize = 60f;
-            cam.nearClipPlane = 0.5f;
-            cam.farClipPlane = 400f;
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.08f, 0.08f, 0.1f);
-            cam.depth = -10f;
-            cam.targetTexture = rt;
-            var mm = camGo.AddComponent<MinimapController>();
-            mm.target = player;
-            Report.AppendLine("[小地图] 正交相机 512 RenderTexture，M 键切换缩放；界面呈现由模块四接入");
+            var tabletGo = new GameObject("FieldTabletNavigator");
+            var tablet = tabletGo.AddComponent<FieldTabletNavigator>();
+            tablet.player = player.GetComponent<FirstPersonController>();
+            var rover = UnityEngine.Object.FindObjectOfType<RoverController>();
+            tablet.rover = rover != null ? rover.transform : null;
+            tablet.vehicle = rover != null ? rover.GetComponent<VehicleEnterExit>() : null;
+            tablet.font = AssetDatabase.LoadAssetAtPath<Font>(
+                "Assets/_Project/UI/Fonts/NotoSansCJKsc-Regular.otf");
+            Report.AppendLine("[小地图] Q 键手持极简导航；仅保留建筑轮廓与玩家/SEV/分散采样点，M 键切换量程");
         }
 
         // 构建产物预览：S4 基地鸟瞰 + 出生点视角

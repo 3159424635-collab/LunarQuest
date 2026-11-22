@@ -24,7 +24,14 @@ namespace LunarQuest
         public string action; public string text; public DlgChoice[] choices; public DlgEffect[] effects;
         public DlgEffect[] on_complete_effects;
     }
-    [Serializable] public class DlgTask { public string id; public string title; public string completion; public string next; }
+    [Serializable] public class DlgTask
+    {
+        public string id;
+        public string title;
+        public string objective;
+        public string completion;
+        public string next;
+    }
     [Serializable] public class DlgChar
     {
         public string id;

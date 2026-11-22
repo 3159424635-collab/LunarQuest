@@ -27,6 +27,7 @@ namespace LunarQuest
             db = database != null ? DialogueDatabase.Load(database) : new DialogueDatabase();
             hud = FindObjectOfType<HUDController>();
             SetDefaults();
+            PrimeStartTaskHud();
         }
 
         void Start()
@@ -36,6 +37,19 @@ namespace LunarQuest
         }
 
         void FireStartEvent() => FireEvent(startEvent);
+
+        void PrimeStartTaskHud()
+        {
+            if (string.IsNullOrEmpty(startEvent)) return;
+            DlgNode best = null;
+            foreach (DlgNode node in db.Nodes)
+            {
+                if (node.@event != startEvent || string.IsNullOrEmpty(node.task_id) || !ConditionsOk(node))
+                    continue;
+                if (best == null || node.priority > best.priority) best = node;
+            }
+            if (best != null) UpdateTaskHud(best.task_id);
+        }
 
         void SetDefaults()
         {
@@ -47,7 +61,7 @@ namespace LunarQuest
 
         // ---------------- 对外入口 ----------------
 
-        public void FireEvent(string ev)
+        public bool FireEvent(string ev)
         {
             DlgNode best = null;
             foreach (var n in db.Nodes)
@@ -55,13 +69,23 @@ namespace LunarQuest
                 if (n.@event != ev || !ConditionsOk(n)) continue;
                 if (best == null || n.priority > best.priority) best = n;
             }
-            if (best != null) RunNode(best);
+            if (best == null) return false;
+            RunNode(best);
+            return true;
         }
 
-        public void OnNpc(string characterId) => FireEvent("interact_" + characterId);
+        public void OnNpc(string characterId)
+        {
+            if (!FireEvent("interact_" + characterId))
+                ShowSub("系统", "这名队员暂时没有新的任务信息。");
+        }
 
         public string GetState(string field)
             => state.TryGetValue(field, out string value) ? value : null;
+
+        /// <summary>查询某个固定勘测点是否已经采集，供导航标记在样本实体销毁后继续正确更新。</summary>
+        public bool IsSampleCollected(string pointId)
+            => !string.IsNullOrEmpty(pointId) && collectedPoints.Contains(pointId);
 
         /// <summary>按节点与选项 ID 执行选择；供 UI、存档恢复和自动验收共用。</summary>
         public bool TrySelectChoice(string nodeId, string choiceId)
@@ -75,27 +99,28 @@ namespace LunarQuest
             return false;
         }
 
-        public void OnSamplePoint(string pointId)
+        public bool OnSamplePoint(string pointId)
         {
             if (state.GetValueOrDefault("sample_task_accepted") != "true")
             {
                 ShowSub("系统", "尚未接取采样任务。先到广寒站找周航。");
-                return;
+                return false;
             }
             if (state.GetValueOrDefault("sample_delivered") == "true")
             {
                 ShowSub("系统", "样本已交付，任务完成。");
-                return;
+                return false;
             }
             if (!collectedPoints.Add(pointId))
             {
                 ShowSub("系统", "该勘测点已采集过。");
-                return;
+                return false;
             }
             int count = collectedPoints.Count;
             state["sample_count"] = count.ToString();
             FireEvent("sample_committed");
             if (count >= 3) ShowSub("系统", "三份样本已齐，回广寒站交给许青。");
+            return true;
         }
 
         public void OnExhibitOpened() => FireEvent("exhibit_interaction_start");
@@ -191,7 +216,20 @@ namespace LunarQuest
         {
             if (hud == null) return;
             foreach (var t in db.Tasks)
-                if (t.id == taskId) { hud.SetQuest(t.title); return; }
+                if (t.id == taskId)
+                {
+                    string title = ExpandTaskText(t.title);
+                    string objective = ExpandTaskText(t.objective);
+                    hud.SetQuest(string.IsNullOrEmpty(objective) ? title : title + "\n" + objective);
+                    return;
+                }
+        }
+
+        string ExpandTaskText(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return string.Empty;
+            string count = state.GetValueOrDefault("sample_count") ?? "0";
+            return text.Replace("{sample_count}", count);
         }
 
         void ShowSub(DlgNode n)

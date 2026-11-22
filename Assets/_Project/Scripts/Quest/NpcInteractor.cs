@@ -19,6 +19,9 @@ namespace LunarQuest
 
         public override void Interact(GameObject who)
         {
+            var launchTour = GetComponent<LaunchSiteTourGuide>();
+            if (launchTour != null && launchTour.HandleInteraction(who)) return;
+
             if (animator) animator.CrossFade("talk", 0.15f);
             if (QuestManager.I != null) QuestManager.I.OnNpc(characterId);
         }
@@ -38,13 +41,13 @@ namespace LunarQuest
             float sy = Mathf.Max(Mathf.Abs(scale.y), 0.0001f);
             float sxz = Mathf.Max(Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z)), 0.0001f);
             float height = Mathf.Max(1.2f, bounds.size.y / sy);
-            float radius = Mathf.Clamp(Mathf.Min(bounds.size.x, bounds.size.z) * 0.35f / sxz,
-                0.25f, height * 0.35f);
+            float radius = Mathf.Clamp(Mathf.Min(bounds.size.x, bounds.size.z) * 0.45f / sxz,
+                0.32f, height * 0.4f);
 
             var capsule = gameObject.AddComponent<CapsuleCollider>();
             capsule.direction = 1;
             capsule.center = transform.InverseTransformPoint(bounds.center);
-            capsule.height = Mathf.Max(height, radius * 2f);
+            capsule.height = Mathf.Max(height + 0.2f, radius * 2f);
             capsule.radius = radius;
         }
     }

@@ -24,8 +24,12 @@ namespace LunarQuest
 
         [Header("第三人称（V 键切换）")]
         public GameObject thirdPersonBody;      // 第三人称下显示的身体模型（第一人称隐藏）
-        public float thirdPersonDistance = 3.4f; // 相机在身后的距离
-        public float thirdPersonHeight = 0.6f;  // 相机相对头部抬高的高度
+        public float thirdPersonDistance = 4.2f; // 相机在身后的距离
+        public float thirdPersonHeight = 0.75f; // 相机相对角色根节点的高度
+        public float thirdPersonFocusHeight = 0.2f; // 镜头看向胸腹而不是头顶
+        public float thirdPersonShoulderOffset = 0.3f;
+        public float thirdPersonCollisionRadius = 0.22f;
+        public float bodyTurnSpeed = 12f;
 
         CharacterController cc;
         Transform cam;
@@ -33,6 +37,10 @@ namespace LunarQuest
         float pitch;            // 相机俯仰角
         float verticalVelocity; // 垂直速度（跳跃/下落）
         bool thirdPerson;
+        Animator bodyAnimator;
+        string locomotionState;
+
+        public bool IsThirdPerson => thirdPerson;
 
         // 实际重力加速度 = -9.81 × 倍率
         float Gravity => -9.81f * gravityScale;
@@ -42,6 +50,7 @@ namespace LunarQuest
             cc = GetComponent<CharacterController>();
             cam = GetComponentInChildren<Camera>().transform;
             fpCamLocal = cam.localPosition;
+            CacheBodyAnimator();
             Cursor.lockState = CursorLockMode.Locked; // 锁鼠标到屏幕中心，Esc 可解锁
             Cursor.visible = false;
         }
@@ -50,40 +59,76 @@ namespace LunarQuest
         {
             if (SciFiHUD.ModalOpen) return;
             if (Input.GetKeyDown(KeyCode.V)) ToggleView();
-            Look();
+            ReadLookInput();
             Move();
+            UpdateViewCamera();
         }
 
         void ToggleView()
         {
             thirdPerson = !thirdPerson;
             if (thirdPersonBody) thirdPersonBody.SetActive(thirdPerson);
-            if (!thirdPerson)
+            locomotionState = null;
+            if (thirdPerson)
+            {
+                CacheBodyAnimator();
+                if (bodyAnimator != null)
+                {
+                    bodyAnimator.applyRootMotion = false;
+                    bodyAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                    bodyAnimator.Rebind();
+                    bodyAnimator.Update(0f);
+                }
+                SetLocomotion(false);
+            }
+            else
             {
                 cam.localPosition = fpCamLocal;
                 cam.localRotation = Quaternion.identity;
             }
         }
 
-        void Look()
+        void ReadLookInput()
         {
-            // 水平转身体（Y 轴），垂直转相机（俯仰），分开处理是第一人称的标准做法
             float mx = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
             float my = Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime;
             transform.Rotate(0f, mx, 0f);
             pitch = Mathf.Clamp(pitch - my, -pitchLimit, pitchLimit);
+        }
 
+        void UpdateViewCamera()
+        {
             if (!thirdPerson)
             {
                 cam.localRotation = Quaternion.Euler(pitch, 0f, 0f);
                 return;
             }
 
-            // 第三人称：相机绕头部转动，保持俯仰角一致，从身后看向前方
+            // 以躯干为取景焦点，镜头稍微偏肩，保证头、躯干和腿都在画面内。
             Quaternion view = Quaternion.Euler(pitch, transform.eulerAngles.y, 0f);
-            Vector3 head = transform.position + Vector3.up * 1.6f;
-            cam.position = head + view * (Vector3.back * thirdPersonDistance) + Vector3.up * thirdPersonHeight;
-            cam.rotation = view;
+            Vector3 focus = transform.position + Vector3.up * thirdPersonFocusHeight;
+            Vector3 desired = focus + view * new Vector3(
+                thirdPersonShoulderOffset, thirdPersonHeight, -thirdPersonDistance);
+
+            // 墙体与相机之间做球形扫描，防止进入基地后镜头穿墙。
+            Vector3 delta = desired - focus;
+            float distance = delta.magnitude;
+            if (distance > 0.01f)
+            {
+                Vector3 direction = delta / distance;
+                var hits = Physics.SphereCastAll(focus, thirdPersonCollisionRadius, direction, distance,
+                    ~0, QueryTriggerInteraction.Ignore);
+                System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+                foreach (var hit in hits)
+                {
+                    if (hit.collider.transform.IsChildOf(transform)) continue;
+                    desired = focus + direction * Mathf.Max(0.65f, hit.distance - 0.18f);
+                    break;
+                }
+            }
+
+            cam.position = desired;
+            cam.LookAt(focus);
         }
 
         void Move()
@@ -104,19 +149,40 @@ namespace LunarQuest
             verticalVelocity += Gravity * Time.deltaTime;
             cc.Move((worldMove + Vector3.up * verticalVelocity) * Time.deltaTime);
 
-            // 第三人称动画：移动时播 walk，静止时播 idle
+            // 第三人称动画：只在状态真正变化时淡入，避免每帧重启过渡导致动画卡在第一帧。
             if (thirdPersonBody != null && thirdPersonBody.activeSelf)
             {
-                var anim = thirdPersonBody.GetComponent<Animator>();
-                if (anim != null)
+                bool moving = input.sqrMagnitude > 0.01f;
+                SetLocomotion(moving);
+
+                if (moving)
                 {
-                    bool moving = worldMove.magnitude > 0.5f;
-                    string cur = moving ? "walk" : "idle";
-                    var state = anim.GetCurrentAnimatorStateInfo(0);
-                    if (!state.IsName(cur))
-                        anim.CrossFade(cur, 0.2f);
+                    float targetYaw = Mathf.Atan2(input.x, input.z) * Mathf.Rad2Deg;
+                    Quaternion targetRotation = Quaternion.Euler(0f, targetYaw, 0f);
+                    float turnT = 1f - Mathf.Exp(-bodyTurnSpeed * Time.deltaTime);
+                    thirdPersonBody.transform.localRotation = Quaternion.Slerp(
+                        thirdPersonBody.transform.localRotation, targetRotation, turnT);
                 }
             }
+        }
+
+        void CacheBodyAnimator()
+        {
+            if (bodyAnimator == null && thirdPersonBody != null)
+                bodyAnimator = thirdPersonBody.GetComponentInChildren<Animator>(true);
+        }
+
+        void SetLocomotion(bool moving)
+        {
+            CacheBodyAnimator();
+            if (bodyAnimator == null) return;
+
+            string desired = moving ? "walk" : "idle";
+            bodyAnimator.speed = moving ? Mathf.Clamp(walkSpeed / 3.2f, 1f, 1.65f) : 1f;
+            if (locomotionState == desired) return;
+
+            bodyAnimator.CrossFadeInFixedTime(desired, 0.14f);
+            locomotionState = desired;
         }
     }
 }

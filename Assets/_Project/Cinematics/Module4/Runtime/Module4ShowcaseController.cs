@@ -115,17 +115,15 @@ namespace LunarQuest.Module4
                     sequence.director.Resume();
             }
 
-            hud.progress.fillAmount = Mathf.Clamp01(t / totalDuration);
-            hud.missionClock.text = "MET  " + TimeSpan.FromSeconds(t).ToString(@"mm\:ss");
-            hud.footerText.text = exportMode ? "LUNARQUEST   /   演出与视听展示"
-                : flowMode == "return" && paused && clock >= totalDuration - .1
-                    ? "任务完成    R 重播返航    ESC 退出"
-                    : "1 发射    2 地出    3 界面    4 返回    SPACE 暂停    R 重播    ESC 退出";
-            hud.landingText.gameObject.SetActive(section == 3 && local > 28);
-            hud.landingPanel.SetActive(section == 3 && local > 28);
-            hud.minimapArrow.parent.gameObject.SetActive(section == 3);
-            hud.dialoguePanel.SetActive(section == 3 && local >= 10 && local < 20);
-            hud.dialogueText.text = "基地指挥官\n\n欢迎来到广寒站。三号勘测点已标记在小地图上。\n按 E 接受科考任务。";
+            if (hud.progress) hud.progress.fillAmount = Mathf.Clamp01(t / totalDuration);
+            if (hud.missionClock) hud.missionClock.text = TimeSpan.FromSeconds(t).ToString(@"mm\:ss");
+            if (hud.footerText) hud.footerText.text = "";
+            // 演出画面只保留飞行数据；任务、导航、参数面板属于游戏界面，不在演出中叠加。
+            if (hud.landingText) hud.landingText.gameObject.SetActive(false);
+            if (hud.landingPanel) hud.landingPanel.SetActive(false);
+            if (hud.minimapArrow && hud.minimapArrow.parent) hud.minimapArrow.parent.gameObject.SetActive(false);
+            if (hud.dialoguePanel) hud.dialoguePanel.SetActive(false);
+            if (hud.dialogueText) hud.dialogueText.text = "";
             if (section == 0)
             {
                 hud.SetChapter("01", "蓄势 · 启程", "LAUNCH / EARTH DEPARTURE");
@@ -147,8 +145,7 @@ namespace LunarQuest.Module4
                 hud.SetChapter("03", "月面 · 广寒站", "LUNAR SURFACE / HUD SHOWCASE");
                 float speed = local < 10 ? 8+Mathf.Sin(local)*4 : local < 24 ? 22+Mathf.Sin(local)*7 : 0;
                 hud.SetTelemetry(speed, 0, 97-local*.08f, local < 13 ? "任务 02 · 前往三号勘测点" : local < 25 ? "任务 03 · 采集月壤样本  2 / 3" : "科考任务完成 · 返回基地", local < 10 ? "按 F 进入月球车" : local < 24 ? "按住 E 进行采样" : "样本已封装 · 等待移交");
-                hud.minimapArrow.localEulerAngles = new Vector3(0,0,-local*8);
-                hud.landingText.text = "着陆参数面板\n下降速度上限  2.5 m/s\n水平速度上限  1.0 m/s\n反推响应       0.65\n演示配置 · 由程序模块接入判定";
+                if (hud.minimapArrow) hud.minimapArrow.localEulerAngles = new Vector3(0,0,-local*8);
                 if (local < 6) hud.SetSubtitle("基地飞控", "欢迎来到广寒站。");
                 else if (local > 12 && local < 19) hud.SetSubtitle("基地指挥官", "交互界面已就绪，请前往三号勘测点。");
                 else if (local > 25 && local < 31) hud.SetSubtitle("随行科学家", "月壤样本已采集，任务完成。");

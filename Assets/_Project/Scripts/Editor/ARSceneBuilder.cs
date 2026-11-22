@@ -14,12 +14,16 @@ namespace LunarQuest.EditorTools
     {
         public static void Build()
         {
+            AndroidBuilder.EnsureARCoreConfigured();
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             RenderSettings.ambientLight = new Color(0.5f, 0.5f, 0.5f);
 
             // AR Session
             var sessionGo = new GameObject("AR Session");
-            sessionGo.AddComponent<ARSession>();
+            var session = sessionGo.AddComponent<ARSession>();
+            // 不让 AR Foundation 自动弹出 Google Play AR 服务安装页；
+            // ARExhibitPlacer 会在运行环境缺失时进入兼容展示模式。
+            session.attemptUpdate = false;
             sessionGo.AddComponent<ARInputManager>();
 
             // XR Origin（相机+平面检测+放置器）
@@ -49,14 +53,14 @@ namespace LunarQuest.EditorTools
             originGo.AddComponent<ARRaycastManager>();
 
             var placer = originGo.AddComponent<ARExhibitPlacer>();
-            placer.exhibitIds = new[] { "APOLLO_LRV", "YUTU_ROVER", "LUNA25_CAPSULE" };
+            placer.exhibitIds = new[] { "APOLLO_LM", "YUTU_ROVER", "LRO" };
 
             var prefabs = new GameObject[3];
             string[] paths =
             {
-                "Assets/_Project/Art/Models/SM_Rover_Apollo.glb",
+                "Assets/_Project/Art/Models/NASA/Apollo Lunar Module/Apollo Lunar Module.glb",
                 "Assets/_Project/Art/Models/Sketchfab/yutu_rover/scene.gltf",
-                "Assets/_Project/Art/Models/Sketchfab/luna25_lander/scene.gltf",
+                "Assets/_Project/Art/Models/NASA/Lunar Reconnaissance Orbiter/Lunar Reconnaissance Orbiter.glb",
             };
             for (int i = 0; i < 3; i++)
                 prefabs[i] = AssetDatabase.LoadAssetAtPath<GameObject>(paths[i]);

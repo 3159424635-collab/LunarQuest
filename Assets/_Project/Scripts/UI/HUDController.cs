@@ -26,6 +26,8 @@ namespace LunarQuest
         string prompt;
         string quest;
 
+        public string CurrentQuest => quest ?? string.Empty;
+
         void Start()
         {
             interactor = FindObjectOfType<PlayerInteractor>();
@@ -55,7 +57,13 @@ namespace LunarQuest
         }
 
         /// <summary>任务系统调用：更新当前任务提示。</summary>
-        public void SetQuest(string text) => quest = text;
+        public void SetQuest(string text)
+        {
+            quest = text ?? string.Empty;
+            if (questText) questText.text = quest;
+            // 驾驶时玩家根物体会被停用，不能依赖 Update 才把采样进度转发给常驻 HUD。
+            if (SciFiHUD.I != null) SciFiHUD.I.SetQuest(quest);
+        }
 
         /// <summary>任务系统调用：显示台词/系统提示（复用提示行，短暂顶替交互提示）。</summary>
         public void SetPrompt(string text) => prompt = text;

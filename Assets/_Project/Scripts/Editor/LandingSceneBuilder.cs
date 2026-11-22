@@ -39,7 +39,7 @@ namespace LunarQuest.EditorTools
             RenderSettings.ambientLight = new Color(0.08f, 0.09f, 0.12f); // 深空冷调
 
             var matMoon = LM("M_MoonLanding", new Color(0.45f, 0.44f, 0.42f));
-            var matTarget = LM("M_LandingTarget", new Color(0.1f, 0.8f, 0.2f));
+            var matTarget = TransparentUnlit("M_LandingTarget", new Color(0.15f, 0.9f, 1f, 0.82f));
 
             // ---- 月面：与 S4 完全相同的 Terrain（同参数同贴图同世界位置，保证两场景月面一致） ----
             const string terrainDataPath = "Assets/_Project/Scenes/S3_TerrainData.asset";
@@ -89,13 +89,24 @@ namespace LunarQuest.EditorTools
             tgo.name = "Terrain";
             tgo.transform.position = new Vector3(-250f, 0f, -250f);
 
-            // 着陆目标（绿色发光圈）
-            var tgt = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            tgt.name = "LandingTarget";
-            tgt.transform.position = new Vector3(0f, 2.6f, 0f);
-            tgt.transform.localScale = new Vector3(10f, 0.02f, 10f);
-            tgt.GetComponent<Renderer>().sharedMaterial = matTarget;
-            Object.DestroyImmediate(tgt.GetComponent<Collider>());
+            // 着陆目标：透明全息环，不再用一整块亮绿色实体圆柱遮挡月面。
+            var tgt = new GameObject("LandingTarget");
+            float targetY = tgo.GetComponent<Terrain>().SampleHeight(Vector3.zero) +
+                            tgo.transform.position.y + 0.10f;
+            tgt.transform.position = new Vector3(0f, targetY, 0f);
+            AddRing(tgt, "OuterRing", 10f, 0.16f, matTarget);
+            AddRing(tgt, "InnerRing", 4.5f, 0.09f, matTarget);
+            for (int i = 0; i < 4; i++)
+            {
+                float angle = i * Mathf.PI * 0.5f;
+                Vector3 dir = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+                var tick = new GameObject("TargetTick_" + i).AddComponent<LineRenderer>();
+                tick.transform.SetParent(tgt.transform, false);
+                ConfigureLine(tick, 0.18f, matTarget);
+                tick.positionCount = 2;
+                tick.SetPosition(0, dir * 7.8f);
+                tick.SetPosition(1, dir * 10.8f);
+            }
 
             // ---- 引擎扬尘粒子系统 ----
             var dustGo = new GameObject("EngineDust");
@@ -113,6 +124,9 @@ namespace LunarQuest.EditorTools
             psShape.angle = 30f;
             var psEmit = ps.emission;
             psEmit.rateOverTime = 50f;
+            var dustRenderer = dustGo.GetComponent<ParticleSystemRenderer>();
+            dustRenderer.sharedMaterial = ParticleMaterial(
+                "M_EngineDust", new Color(0.62f, 0.58f, 0.52f, 0.48f));
             dustGo.transform.position = new Vector3(0f, 2.2f, 0f);
             dustGo.SetActive(false); // 由 LandingMinigame 控制启用
 
@@ -195,6 +209,69 @@ namespace LunarQuest.EditorTools
             return 1f - t * t * (3f - 2f * t);
         }
         static float Dist2(float x, float z, float cx, float cz) => Mathf.Sqrt((x - cx) * (x - cx) + (z - cz) * (z - cz));
+
+        static void AddRing(GameObject parent, string name, float radius, float width, Material material)
+        {
+            var line = new GameObject(name).AddComponent<LineRenderer>();
+            line.transform.SetParent(parent.transform, false);
+            ConfigureLine(line, width, material);
+            line.loop = true;
+            line.positionCount = 72;
+            for (int i = 0; i < line.positionCount; i++)
+            {
+                float angle = i * Mathf.PI * 2f / line.positionCount;
+                line.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius));
+            }
+        }
+
+        static void ConfigureLine(LineRenderer line, float width, Material material)
+        {
+            line.useWorldSpace = false;
+            line.alignment = LineAlignment.View;
+            line.widthMultiplier = width;
+            line.numCornerVertices = 2;
+            line.numCapVertices = 2;
+            line.sharedMaterial = material;
+            line.startColor = Color.white;
+            line.endColor = Color.white;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
+        }
+
+        static Material TransparentUnlit(string name, Color color)
+        {
+            string path = "Assets/_Project/Art/Materials/" + name + ".mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Sprites/Default")) { name = name };
+                AssetDatabase.CreateAsset(material, path);
+            }
+            material.shader = Shader.Find("Sprites/Default");
+            material.SetColor("_Color", color);
+            material.SetColor("_BaseColor", color);
+            material.renderQueue = 3000;
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        static Material ParticleMaterial(string name, Color color)
+        {
+            string path = "Assets/_Project/Art/Materials/" + name + ".mat";
+            var material = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit")) { name = name };
+                AssetDatabase.CreateAsset(material, path);
+            }
+            material.SetColor("_BaseColor", color);
+            material.SetFloat("_Surface", 1f);
+            material.SetFloat("_ZWrite", 0f);
+            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            material.renderQueue = 3000;
+            EditorUtility.SetDirty(material);
+            return material;
+        }
 
         static Material LM(string n, Color c)
         {

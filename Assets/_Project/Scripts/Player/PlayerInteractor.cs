@@ -12,6 +12,7 @@ namespace LunarQuest
     public class PlayerInteractor : MonoBehaviour
     {
         public float interactRange = 4f;          // 交互距离（米）
+        public float aimAssistRadius = 0.18f;     // 准星容错，避免必须精确瞄准 NPC 身体
 
         /// <summary>提示变化：看向可交互物时传入提示文字，移开时传入 null。</summary>
         public event Action<string> OnPromptChanged;
@@ -21,12 +22,20 @@ namespace LunarQuest
 
         void Awake() => cam = GetComponentInChildren<Camera>();
 
+        void OnDisable()
+        {
+            current = null;
+            OnPromptChanged?.Invoke(null);
+        }
+
         void Update()
         {
             InteractableBase hit = null;
+            if (cam == null) return;
             Ray ray = new Ray(cam.transform.position, cam.transform.forward);
-            // RaycastAll 穿透检测：视线内的地板/家具不遮挡交互——取最近的可交互物
-            var hits = Physics.RaycastAll(ray, interactRange);
+            // SphereCastAll 带小幅准星容错；穿透检测所有命中，取最近的可交互物。
+            var hits = Physics.SphereCastAll(ray, aimAssistRadius, interactRange,
+                ~0, QueryTriggerInteraction.Collide);
             System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
             foreach (var h in hits)
             {

@@ -10,13 +10,15 @@ namespace LunarQuest
     public class RoverCamera : MonoBehaviour
     {
         public Transform target;                       // 月球车
-        public Vector3 offset = new Vector3(0f, 3.5f, -7f); // 车后上方
-        public float followSmoothing = 6f;             // 跟随平滑度，数值越大跟随越紧
+        public Vector3 offset = new Vector3(0f, 4.2f, -8.5f); // 车后上方
+        public float followSmoothing = 7f;
+        public float collisionRadius = 0.3f;
+        public float collisionPadding = 0.25f;
 
         [Header("速度感视野")]
-        public float baseFov = 60f;
-        public float maxFov = 78f;                     // 高速时视野
-        public float fovMaxSpeed = 20f;                // 达到该速度(m/s)时 FOV 拉满
+        public float baseFov = 58f;
+        public float maxFov = 68f;
+        public float fovMaxSpeed = 8f;
 
         Camera cam;
         RoverController rover;
@@ -32,11 +34,28 @@ namespace LunarQuest
             if (!target) return;
 
             // 位置：对车后方的目标点做插值，避免相机刚性固定产生的僵硬感
+            Vector3 focus = target.position + target.forward * 2.4f + Vector3.up * 1.5f;
             Vector3 desired = target.position + target.TransformDirection(offset);
-            transform.position = Vector3.Lerp(transform.position, desired, followSmoothing * Time.deltaTime);
+            Vector3 direction = desired - focus;
+            float distance = direction.magnitude;
+            if (distance > 0.01f)
+            {
+                direction /= distance;
+                var hits = Physics.SphereCastAll(focus, collisionRadius, direction, distance,
+                    ~0, QueryTriggerInteraction.Ignore);
+                System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+                foreach (var hit in hits)
+                {
+                    if (hit.collider.transform.IsChildOf(target)) continue;
+                    desired = focus + direction * Mathf.Max(0.8f, hit.distance - collisionPadding);
+                    break;
+                }
+            }
+            float followT = 1f - Mathf.Exp(-followSmoothing * Time.deltaTime);
+            transform.position = Vector3.Lerp(transform.position, desired, followT);
 
             // 看向车前方一点，过弯时镜头自然带动视线
-            transform.LookAt(target.position + target.forward * 3f + Vector3.up * 1.2f);
+            transform.LookAt(focus);
 
             // FOV 随速度拉伸，以较低成本增强速度感
             if (cam && rover)

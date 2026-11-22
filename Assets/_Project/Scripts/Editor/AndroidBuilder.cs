@@ -1,8 +1,13 @@
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
+using UnityEditor.XR.Management;
+using UnityEditor.XR.Management.Metadata;
+using UnityEngine.XR.ARCore;
+using UnityEngine.Rendering;
 using System;
 using System.IO;
+using System.Linq;
 
 namespace LunarQuest.EditorTools
 {
@@ -12,12 +17,24 @@ namespace LunarQuest.EditorTools
     /// </summary>
     public static class AndroidBuilder
     {
+        static string menuBuildPathOverride;
+
+        [MenuItem("工具/月征/构建 S6 AR 测试包")]
+        public static void BuildAPKFromMenu()
+        {
+            menuBuildPathOverride = Path.GetFullPath(
+                Path.Combine("Build", "Android", "LunarQuest_AR_2026-11-21.apk"));
+            BuildAPK();
+        }
+
         public static void BuildAPK()
         {
+            EnsureARCoreConfigured();
             BuildSceneCatalog.ValidateRequiredScenes();
 
-            string apkPath = CommandLineValue("-apkPath") ??
+            string apkPath = menuBuildPathOverride ?? CommandLineValue("-apkPath") ??
                 Path.GetFullPath(Path.Combine("Build", "Android", "LunarQuest_AR.apk"));
+            menuBuildPathOverride = null;
             string outputDirectory = Path.GetDirectoryName(apkPath);
             if (!string.IsNullOrEmpty(outputDirectory)) Directory.CreateDirectory(outputDirectory);
 
@@ -27,6 +44,8 @@ namespace LunarQuest.EditorTools
             UIOrientation previousOrientation = PlayerSettings.defaultInterfaceOrientation;
             AndroidSdkVersions previousMinSdk = PlayerSettings.Android.minSdkVersion;
             AndroidSdkVersions previousTargetSdk = PlayerSettings.Android.targetSdkVersion;
+            bool previousDefaultGraphicsApis = PlayerSettings.GetUseDefaultGraphicsAPIs(BuildTarget.Android);
+            GraphicsDeviceType[] previousGraphicsApis = PlayerSettings.GetGraphicsAPIs(BuildTarget.Android);
 
             try
             {
@@ -36,6 +55,10 @@ namespace LunarQuest.EditorTools
                 PlayerSettings.productName = "月征AR";
                 PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.lunarquest.ar");
                 PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
+                // ARCore 5.1 不支持 Vulkan；独立 AR 包构建期间仅使用 OpenGLES3。
+                PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
+                PlayerSettings.SetGraphicsAPIs(BuildTarget.Android,
+                    new[] { GraphicsDeviceType.OpenGLES3 });
 
                 var options = new BuildPlayerOptions
                 {
@@ -43,7 +66,9 @@ namespace LunarQuest.EditorTools
                     scenes = new[] { BuildSceneCatalog.ARScene },
                     locationPathName = apkPath,
                     target = BuildTarget.Android,
-                    options = BuildOptions.None,
+                    // ARCore/Depth 的 required→optional 会改变合并后的 AndroidManifest；
+                    // 清理构建缓存，避免 Gradle 沿用上一次的 required feature。
+                    options = BuildOptions.CleanBuildCache,
                 };
 
                 Debug.Log($"[AndroidBuilder] 开始构建独立 AR 场景 → {apkPath}");
@@ -66,8 +91,55 @@ namespace LunarQuest.EditorTools
                 PlayerSettings.defaultInterfaceOrientation = previousOrientation;
                 PlayerSettings.Android.minSdkVersion = previousMinSdk;
                 PlayerSettings.Android.targetSdkVersion = previousTargetSdk;
+                PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, previousDefaultGraphicsApis);
+                if (!previousDefaultGraphicsApis && previousGraphicsApis != null && previousGraphicsApis.Length > 0)
+                    PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, previousGraphicsApis);
                 BuildSceneCatalog.ConfigureProjectScenes();
             }
+        }
+
+        public static void EnsureARCoreConfigured()
+        {
+            const string settingsPath = "Assets/XR/XRGeneralSettingsPerBuildTarget.asset";
+            XRGeneralSettingsPerBuildTarget perTarget =
+                AssetDatabase.LoadAssetAtPath<XRGeneralSettingsPerBuildTarget>(settingsPath);
+            if (perTarget == null)
+                throw new InvalidOperationException("缺少 Android XR General Settings 资产: " + settingsPath);
+
+            const BuildTargetGroup targetGroup = BuildTargetGroup.Android;
+            if (!perTarget.HasSettingsForBuildTarget(targetGroup))
+                perTarget.CreateDefaultSettingsForBuildTarget(targetGroup);
+            if (!perTarget.HasManagerSettingsForBuildTarget(targetGroup))
+                perTarget.CreateDefaultManagerSettingsForBuildTarget(targetGroup);
+
+            var general = perTarget.SettingsForBuildTarget(targetGroup);
+            var manager = perTarget.ManagerSettingsForBuildTarget(targetGroup);
+            general.InitManagerOnStart = true;
+            if (!manager.activeLoaders.Any(loader => loader is ARCoreLoader) &&
+                !XRPackageMetadataStore.AssignLoader(manager, typeof(ARCoreLoader).FullName, targetGroup))
+                throw new InvalidOperationException("无法为 Android 构建目标启用 ARCore Loader");
+
+            // 国内 Android 设备经常没有可更新的“Google Play 服务（AR）”。
+            // 将 ARCore 声明为可选：支持 ARCore 的手机仍使用真实平面检测，
+            // 不支持或未安装运行环境的手机则由场景进入兼容 3D 展示模式。
+            var arcoreSettings = UnityEditor.XR.ARCore.ARCoreSettings.GetOrCreateSettings();
+            arcoreSettings.requirement = UnityEditor.XR.ARCore.ARCoreSettings.Requirement.Optional;
+            arcoreSettings.depth = UnityEditor.XR.ARCore.ARCoreSettings.Requirement.Optional;
+            EditorUtility.SetDirty(arcoreSettings);
+
+            EditorUtility.SetDirty(perTarget);
+            EditorUtility.SetDirty(general);
+            EditorUtility.SetDirty(manager);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[AndroidBuilder] Android XR 已启用 ARCore Loader（ARCore 可选，支持兼容展示模式）");
+        }
+
+        public static bool IsARCoreConfigured()
+        {
+            var general = XRGeneralSettingsPerBuildTarget.XRGeneralSettingsForBuildTarget(
+                BuildTargetGroup.Android);
+            return general != null && general.InitManagerOnStart && general.Manager != null &&
+                   general.Manager.activeLoaders.Any(loader => loader is ARCoreLoader);
         }
 
         static string CommandLineValue(string key)

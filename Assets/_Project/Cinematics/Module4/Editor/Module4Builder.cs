@@ -25,6 +25,7 @@ public static class Module4Builder
     static Camera camera;
     static Module4HudView hud;
     static VoiceSpec voiceSpec;
+    static bool sceneOnly;
     [Serializable] public class Voice {public string phase;public float at;public string text;public string file;public float duration;}
     [Serializable] public class VoiceSpec {public Voice[] voices;}
     [Serializable] public class Check {public string unity; public int sequences; public int nativeSignals;public int virtualCameras; public string[] timelineNames;public double[] durations; public bool hudBindings;public string[] audioFiles; public bool passed;}
@@ -60,7 +61,8 @@ public static class Module4Builder
         var profile=ScriptableObject.CreateInstance<VolumeProfile>();
         var bloom=profile.Add<Bloom>();bloom.intensity.Override(.28f);bloom.threshold.Override(1.2f);
         var tone=profile.Add<Tonemapping>();tone.mode.Override(TonemappingMode.ACES);
-        var vignette=profile.Add<Vignette>();vignette.intensity.Override(.18f);
+        var color=profile.Add<ColorAdjustments>();color.postExposure.Override(.28f);color.contrast.Override(2f);color.saturation.Override(3f);
+        var vignette=profile.Add<Vignette>();vignette.intensity.Override(.08f);
         AssetDatabase.CreateAsset(profile,C+"Materials/Module4Post.asset");
         foreach(var component in profile.components)AssetDatabase.AddObjectToAsset(component,profile);
         volume.sharedProfile=profile;
@@ -81,6 +83,8 @@ public static class Module4Builder
         launch.Seek(0);camera.transform.SetPositionAndRotation(new Vector3(80,32,-115),Quaternion.Euler(8,-32,0));
         PrefabUtility.SaveAsPrefabAsset(hud.gameObject,U+"Prefabs/Module4HUD.prefab");
         foreach(var s in master.sequences)PrefabUtility.SaveAsPrefabAsset(s.gameObject,C+"Prefabs/"+s.sequenceId+".prefab");
+        // 保存 HUD 预制体后再次固定场景实例缩放，避免无图形批处理环境将根 Canvas 写成零缩放。
+        hud.transform.localScale=Vector3.one;EditorUtility.SetDirty(hud.transform);EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene,C+"Demo/Module4Showcase.unity");
         LunarQuest.EditorTools.BuildSceneCatalog.ConfigureProjectScenes();
         PlayerSettings.companyName="LunarQuest Course Project";PlayerSettings.productName="LunarQuest Module 4";
@@ -98,12 +102,46 @@ public static class Module4Builder
             audioFiles=Directory.GetFiles(A,"*.wav").Select(Path.GetFileName).ToArray(),passed=true};
         for(int i=0;i<3;i++)if(Math.Abs(check.durations[i]-new[]{60,30,45}[i])>.1)throw new Exception("Timeline duration mismatch.");
         File.WriteAllText("Module4BuildCheck.json",JsonUtility.ToJson(check,true));
+        if(sceneOnly){Debug.Log("M4_SCENE_REBUILD_PASSED");return;}
         var output=Arg("-m4out")??Path.GetFullPath("Build/Module4");Directory.CreateDirectory(output);
         AssetDatabase.ExportPackage(new[]{"Assets/_Project/Cinematics","Assets/_Project/Audio","Assets/_Project/UI"},Path.Combine(output,"LunarQuest_Module4.unitypackage"),ExportPackageOptions.Recurse);
         var buildPath=Path.Combine(output,"Windows/LunarQuest_Module4.exe");Directory.CreateDirectory(Path.GetDirectoryName(buildPath));
         var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{C+"Demo/Module4Showcase.unity"},locationPathName=buildPath,target=BuildTarget.StandaloneWindows64,options=BuildOptions.None});
         if(report.summary.result!=UnityEditor.Build.Reporting.BuildResult.Succeeded)throw new Exception("Standalone build failed.");
         Debug.Log("M4_BUILD_PASSED:"+buildPath);
+    }
+
+    [MenuItem("LunarQuest/Module 4/Rebuild Scene Only")]
+    public static void RebuildSceneOnly()
+    {
+        sceneOnly=true;
+        try{Build();}
+        finally{sceneOnly=false;}
+    }
+
+    [MenuItem("LunarQuest/Module 4/Export Preview Frames")]
+    public static void ExportPreviewFrames()
+    {
+        EditorSceneManager.OpenScene(C+"Demo/Module4Showcase.unity",OpenSceneMode.Single);
+        var controller=UnityEngine.Object.FindObjectOfType<Module4ShowcaseController>();
+        if(!controller)throw new Exception("Module 4 controller is missing.");
+        controller.externalClock=true;controller.exportMode=true;
+        var update=typeof(Module4ShowcaseController).GetMethod("Update",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+        var visualUpdate=typeof(Module4VisualDriver).GetMethod("Update",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+        var skyEnable=typeof(Module4SkyState).GetMethod("OnEnable",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+        var canvas=controller.hud.GetComponent<Canvas>();canvas.renderMode=RenderMode.ScreenSpaceCamera;canvas.worldCamera=controller.mainCamera;canvas.planeDistance=1;
+        var brain=controller.mainCamera.GetComponent<CinemachineBrain>();var target=new RenderTexture(1280,720,24,RenderTextureFormat.ARGB32);target.Create();controller.mainCamera.targetTexture=target;controller.mainCamera.aspect=16f/9f;
+        string folder=Arg("-m4preview")??Path.GetFullPath("Build/Module4Preview");Directory.CreateDirectory(folder);
+        float[] times={15,40,58,80,118,154,166,180};string[] names={"01_launch_ground","02_launch_upper","03_launch_space","04_orbit","05_moon","06_return_ascent","07_reentry","08_landing"};
+        for(int i=0;i<times.Length;i++)
+        {
+            controller.forcedTime=times[i];update.Invoke(controller,null);
+            foreach(var state in UnityEngine.Object.FindObjectsOfType<Module4SkyState>(true))if(state.gameObject.activeInHierarchy)skyEnable.Invoke(state,null);
+            foreach(var visual in UnityEngine.Object.FindObjectsOfType<Module4VisualDriver>(true))if(visual.gameObject.activeInHierarchy)visualUpdate.Invoke(visual,null);
+            brain.ManualUpdate();Canvas.ForceUpdateCanvases();controller.mainCamera.Render();
+            RenderTexture.active=target;var image=new Texture2D(1280,720,TextureFormat.RGB24,false);image.ReadPixels(new Rect(0,0,1280,720),0,0);image.Apply();File.WriteAllBytes(Path.Combine(folder,names[i]+".png"),image.EncodeToPNG());UnityEngine.Object.DestroyImmediate(image);
+        }
+        RenderTexture.active=null;controller.mainCamera.targetTexture=null;target.Release();UnityEngine.Object.DestroyImmediate(target);Debug.Log("M4_PREVIEW_EXPORT_PASSED:"+folder);
     }
 
     static string Arg(string key){var a=Environment.GetCommandLineArgs();for(int i=0;i<a.Length-1;i++)if(a[i]==key)return a[i+1];return null;}
@@ -229,8 +267,11 @@ public static class Module4Builder
 
     static Module4Sequence Launch()
     {
-        var s=Sequence("Launch","蓄势 · 启程",60);WorldState(s.gameObject,Sky("EarthDusk",new Color(.025f,.065f,.14f),new Color(.62f,.26f,.12f),.25f),new Color(.2f,.23f,.3f));LightAt(s.transform,new Color(1,.65f,.4f),2,new Vector3(14,-55,0));
-        var concrete=Mat("Concrete",new Color(.29f,.32f,.34f),.1f);var steel=Mat("TowerSteel",new Color(.5f,.13f,.045f),.65f);var water=Mat("Ocean",new Color(.025f,.1f,.17f),.65f,.9f);var stripe=Mat("Marking",new Color(.83f,.77f,.55f));
+        var groundSky=Sky("EarthDawn",new Color(.10f,.31f,.62f),new Color(.92f,.48f,.22f),.03f);
+        var upperSky=Sky("UpperAtmosphere",new Color(.025f,.10f,.28f),new Color(.16f,.40f,.72f),.04f);
+        var launchSpace=Sky("LaunchSpace",new Color(.001f,.003f,.012f),new Color(.008f,.018f,.05f),.8f);
+        var s=Sequence("Launch","蓄势 · 启程",60);WorldState(s.gameObject,groundSky,new Color(.34f,.36f,.42f));LightAt(s.transform,new Color(1,.78f,.58f),1.8f,new Vector3(22,-48,0));LightAt(s.transform,new Color(.42f,.58f,.82f),.34f,new Vector3(35,132,0));
+        var concrete=Mat("Concrete",new Color(.36f,.38f,.4f),.1f);var steel=Mat("TowerSteel",new Color(.56f,.16f,.055f),.65f);var water=Mat("Ocean",new Color(.08f,.29f,.46f),.4f,.76f);var stripe=Mat("Marking",new Color(.88f,.81f,.59f));
         Obj("Ocean Horizon",s.transform,PrimitiveType.Plane,new Vector3(0,-2,0),Vector3.one*240,water);Obj("Launch Island",s.transform,PrimitiveType.Cylinder,new Vector3(0,-1,0),new Vector3(340,1,340),concrete);Obj("Launch Pad",s.transform,PrimitiveType.Cylinder,Vector3.zero,new Vector3(48,.6f,48),Mat("PadDark",new Color(.1f,.12f,.14f)));
         for(int i=0;i<24;i++){float a=i*Mathf.PI/12;var p=new Vector3(Mathf.Cos(a)*20,.8f,Mathf.Sin(a)*20);Obj("Pad Mark "+i,s.transform,PrimitiveType.Cube,p,new Vector3(.5f,.03f,3),stripe,new Vector3(0,-a*Mathf.Rad2Deg,0));}
         for(int x=0;x<2;x++)for(int z=0;z<2;z++)Beam("Tower Column",s.transform,new Vector3(-16+x*8,0,-4+z*8),new Vector3(-16+x*8,52,-4+z*8),.6f,steel);
@@ -243,13 +284,15 @@ public static class Module4Builder
         var cams=new[]{VCam("01 发射场全景",s.transform,target,new Vector3(80,12,-115),48),VCam("02 塔架特写",s.transform,target,new Vector3(14,4,-32),44),VCam("03 点火近景",s.transform,engineTarget,new Vector3(16,6,-30),42),VCam("04 升空跟随",s.transform,target,new Vector3(45,10,-80),52),VCam("05 云层远景",s.transform,target,new Vector3(180,50,-270),48)};
         Shots(s,cams,new[]{0f,12,21,31,46},new[]{13f,10,11,16,14});
         var visual=s.gameObject.AddComponent<Module4VisualDriver>();visual.sequence=s;visual.engines=engines;visual.smoke=Particle("LaunchSmoke",s.transform,new Vector3(0,1,0),new Color(.62f,.63f,.65f,.24f),12,5,10,35,true);
+        visual.phase1Sky=groundSky;visual.phase2Sky=upperSky;visual.phase3Sky=launchSpace;visual.phase2Start=31;visual.phase3Start=46;
+        visual.phase1Ambient=new Color(.34f,.36f,.42f);visual.phase2Ambient=new Color(.23f,.27f,.34f);visual.phase3Ambient=new Color(.075f,.085f,.11f);
         Audio(s,"BGM_Earth.wav",0,60,.25f);Audio(s,"SFX_Rocket_Loop.wav",18,40,.7f,true);Audio(s,"SFX_Cabin_Beep.wav",6,.6f,.5f);return s;
     }
     static Material Planet(string id,string file,Color color,bool glowing=false)
     {var m=Mat(id,color,0,.25f);var texture=AssetDatabase.LoadAssetAtPath<Texture2D>(C+"Textures/"+file);if(!texture)throw new Exception("Missing texture: "+file);m.SetTexture("_BaseMap",texture);if(glowing){m.EnableKeyword("_EMISSION");m.SetTexture("_EmissionMap",texture);m.SetColor("_EmissionColor",Color.white*.2f);}EditorUtility.SetDirty(m);AssetDatabase.SaveAssetIfDirty(m);return m;}
     static Module4Sequence Orbit()
     {
-        var s=Sequence("Orbit","绕月 · 地出",30);WorldState(s.gameObject,Sky("SpaceSky",new Color(.001f,.003f,.01f),new Color(.002f,.004f,.012f),1),new Color(.08f,.09f,.12f));LightAt(s.transform,new Color(.95f,.96f,1),2.1f,new Vector3(12,-70,0));
+        var s=Sequence("Orbit","绕月 · 地出",30);WorldState(s.gameObject,Sky("SpaceSky",new Color(.001f,.003f,.01f),new Color(.004f,.008f,.022f),1),new Color(.12f,.13f,.16f));LightAt(s.transform,new Color(.95f,.97f,1),2.35f,new Vector3(12,-70,0));
         var moon=Obj("Moon Limb",s.transform,PrimitiveType.Sphere,new Vector3(0,-116,0),Vector3.one*240,Planet("MoonSurface","NASA_Moon_LROC.jpg",Color.white));
         var earth=Obj("Earth",s.transform,PrimitiveType.Sphere,new Vector3(0,22,160),Vector3.one*45,Planet("EarthSurface","NASA_Earth_BlueMarble.jpg",Color.white,true));earth.transform.localRotation=Quaternion.Euler(12,-90,-8);
         var aim=Empty("Earthrise Target",s.transform,new Vector3(0,16,100)).transform;
@@ -263,6 +306,41 @@ public static class Module4Builder
         for(int z=0;z<n;z++)for(int x=0;x<n;x++){float px=((float)x/(n-1)-.5f)*size,pz=((float)z/(n-1)-.5f)*size;float h=(Mathf.PerlinNoise(px*.018f+31,pz*.018f+42)-.5f)*9;float r=Mathf.Sqrt((px-55)*(px-55)+(pz-45)*(pz-45));h+=Mathf.Exp(-Mathf.Pow((r-24)/5,2))*4-Mathf.Exp(-r*r/400)*3;if(Mathf.Abs(px)<28&&Mathf.Abs(pz)<25)h*=Mathf.Max(Mathf.Abs(px)/28,Mathf.Abs(pz)/25);v[z*n+x]=new Vector3(px,h-.5f,pz);uv[z*n+x]=new Vector2((float)x/(n-1)*6,(float)z/(n-1)*6);if(x<n-1&&z<n-1){int k=z*n+x;tris.AddRange(new[]{k,k+n,k+1,k+1,k+n,k+n+1});}}
         var mesh=new Mesh{name=id};mesh.vertices=v;mesh.uv=uv;mesh.triangles=tris.ToArray();mesh.RecalculateNormals();AssetDatabase.CreateAsset(mesh,C+"Geometry/"+id+".asset");var g=Empty(id,parent);g.AddComponent<MeshFilter>().sharedMesh=mesh;g.AddComponent<MeshRenderer>().sharedMaterial=material;return g;
     }
+    static GameObject LandingTerrain(Transform parent,string id,Material material,float size=900)
+    {
+        int n=81;var vertices=new Vector3[n*n];var uv=new Vector2[vertices.Length];var triangles=new List<int>();
+        for(int z=0;z<n;z++)for(int x=0;x<n;x++)
+        {
+            float px=((float)x/(n-1)-.5f)*size,pz=((float)z/(n-1)-.5f)*size;
+            float broad=(Mathf.PerlinNoise(px*.0045f+9,pz*.0045f+17)-.5f)*16;
+            float detail=(Mathf.PerlinNoise(px*.016f+41,pz*.016f+23)-.5f)*3.5f;
+            float distance=Mathf.Sqrt(px*px+pz*pz);
+            float relief=Mathf.SmoothStep(0,1,Mathf.InverseLerp(55,180,distance));
+            vertices[z*n+x]=new Vector3(px,-1+(broad+detail)*relief,pz);
+            uv[z*n+x]=new Vector2((float)x/(n-1)*8,(float)z/(n-1)*8);
+            if(x<n-1&&z<n-1){int k=z*n+x;triangles.AddRange(new[]{k,k+n,k+1,k+1,k+n,k+n+1});}
+        }
+        var mesh=new Mesh{name=id};mesh.vertices=vertices;mesh.uv=uv;mesh.triangles=triangles.ToArray();mesh.RecalculateNormals();AssetDatabase.CreateAsset(mesh,C+"Geometry/"+id+".asset");
+        var terrain=Empty(id,parent);terrain.AddComponent<MeshFilter>().sharedMesh=mesh;terrain.AddComponent<MeshRenderer>().sharedMaterial=material;return terrain;
+    }
+    static GameObject RidgeRing(Transform parent,string id,Material material)
+    {
+        const int segments=72,rows=3;var vertices=new List<Vector3>();var triangles=new List<int>();
+        for(int row=0;row<rows;row++)for(int i=0;i<=segments;i++)
+        {
+            float angle=i*Mathf.PI*2/segments;
+            float wave=Mathf.Sin(angle*3.1f+1.4f)*11+Mathf.Sin(angle*7.3f)*5;
+            float radius=row==0?205:row==1?320+wave*1.8f:540;
+            float height=row==1?18+wave:-5;
+            vertices.Add(new Vector3(Mathf.Cos(angle)*radius,height,Mathf.Sin(angle)*radius));
+        }
+        for(int row=0;row<rows-1;row++)for(int i=0;i<segments;i++)
+        {
+            int k=row*(segments+1)+i;triangles.AddRange(new[]{k,k+segments+1,k+1,k+1,k+segments+1,k+segments+2});
+        }
+        var mesh=new Mesh{name=id};mesh.SetVertices(vertices);mesh.SetTriangles(triangles,0);mesh.RecalculateNormals();AssetDatabase.CreateAsset(mesh,C+"Geometry/"+id+".asset");
+        var ridge=Empty(id,parent);ridge.AddComponent<MeshFilter>().sharedMesh=mesh;ridge.AddComponent<MeshRenderer>().sharedMaterial=material;return ridge;
+    }
     static void Habitat(Transform parent,Vector3 pos)
     {
         var white=Mat("HabitatWhite",new Color(.78f,.8f,.81f),.45f,.5f);var navy=Mat("SolarBlue",new Color(.015f,.09f,.19f),.6f,.75f);var steel=Mat("FrameSteel",new Color(.2f,.23f,.27f),.8f);
@@ -274,7 +352,7 @@ public static class Module4Builder
     }
     static GameObject MoonWorld(out CinemachineVirtualCamera cam,out AudioSource music,out AudioSource voice)
     {
-        var root=Empty("HUD Demonstration / 广寒站");WorldState(root,Sky("MoonSky",new Color(.001f,.002f,.006f),new Color(.002f,.002f,.006f),1),new Color(.11f,.12f,.15f));LightAt(root.transform,new Color(.8f,.87f,1),2,new Vector3(15,-65,0));Terrain(root.transform,"MoonHUDTerrain",Planet("MoonGround","NASA_Moon_LROC.jpg",new Color(.65f,.66f,.7f)));Habitat(root.transform,new Vector3(-18,0,15));
+        var root=Empty("HUD Demonstration / 广寒站");WorldState(root,Sky("MoonSky",new Color(.001f,.002f,.006f),new Color(.003f,.004f,.01f),1),new Color(.17f,.18f,.21f));LightAt(root.transform,new Color(.84f,.9f,1),2.3f,new Vector3(15,-65,0));Terrain(root.transform,"MoonHUDTerrain",Planet("MoonGround","NASA_Moon_LROC.jpg",new Color(.72f,.73f,.77f)));Habitat(root.transform,new Vector3(-18,0,15));
         Obj("Distant Earth",root.transform,PrimitiveType.Sphere,new Vector3(140,90,240),Vector3.one*32,Planet("EarthHud","NASA_Earth_BlueMarble.jpg",Color.white,true));var aim=Empty("MoonDemo Aim",root.transform,new Vector3(5,5,12));cam=VCam("HUD Showcase Camera",root.transform,aim.transform,new Vector3(45,20,-62),52);
         var map=Empty("Minimap Camera",root.transform,new Vector3(0,100,5)).AddComponent<Camera>();map.transform.rotation=Quaternion.Euler(90,0,0);map.orthographic=true;map.orthographicSize=75;map.nearClipPlane=.1f;map.farClipPlane=250;var rt=new RenderTexture(512,512,16);AssetDatabase.CreateAsset(rt,U+"Sprites/RT_Module4Minimap.renderTexture");map.targetTexture=rt;map.gameObject.AddComponent<UniversalAdditionalCameraData>().renderPostProcessing=false;
         hud.minimapArrow.parent.GetComponentInChildren<RawImage>().texture=rt;
@@ -285,21 +363,27 @@ public static class Module4Builder
     {var track=((TimelineAsset)sequence.director.playableAsset).CreateTrack<ActivationTrack>(null,target.name);track.postPlaybackState=ActivationTrack.PostPlaybackState.Inactive;var clip=track.CreateDefaultClip();clip.start=start;clip.duration=duration;sequence.director.SetGenericBinding(track,target);}
     static Module4Sequence Return()
     {
-        var s=Sequence("Return","携样 · 归航",45);WorldState(s.gameObject,Sky("ReturnSky",new Color(.015f,.04f,.1f),new Color(.18f,.24f,.3f),.8f),new Color(.14f,.16f,.2f));LightAt(s.transform,new Color(1,.85f,.65f),2.2f,new Vector3(23,-45,0));
-        var ascent=Empty("月面上升",s.transform);Terrain(ascent.transform,"ReturnMoonTerrain",mats["MoonGround"]);Habitat(ascent.transform,new Vector3(-25,0,30));ParticleSystem[] engines;var up=Rocket(ascent.transform,"Ascent",true,out engines);var aim=Empty("Ascent Aim",up,new Vector3(0,20,0)).transform;
+        var moonSky=Sky("ReturnMoonSky",new Color(.001f,.003f,.012f),new Color(.004f,.008f,.022f),1);
+        var reentrySky=Sky("ReentrySky",new Color(.004f,.014f,.05f),new Color(.06f,.25f,.43f),.1f);
+        var landingSky=Sky("LandingSky",new Color(.13f,.48f,.86f),new Color(.78f,.82f,.76f),0);
+        var s=Sequence("Return","携样 · 归航",45);WorldState(s.gameObject,moonSky,new Color(.15f,.16f,.19f));
+        var ascent=Empty("月面上升",s.transform);LightAt(ascent.transform,new Color(.86f,.92f,1),2.35f,new Vector3(18,-62,0));LightAt(ascent.transform,new Color(.34f,.46f,.7f),.58f,new Vector3(-22,112,0));Terrain(ascent.transform,"ReturnMoonTerrain",mats["MoonGround"]);Habitat(ascent.transform,new Vector3(-25,0,30));ParticleSystem[] engines;var up=Rocket(ascent.transform,"Ascent",true,out engines);var aim=Empty("Ascent Aim",up,new Vector3(0,20,0)).transform;
         Animate(s,up.gameObject,"Return_Ascent","m_LocalPosition.y",new[]{0f,4,19,45},new[]{2f,4,150,150});
-        var reentry=Empty("再入大气层",s.transform);var body=Empty("Return Capsule",reentry.transform,new Vector3(0,15,0));var ceramic=mats["Ceramic"];Lathe("ReentryCapsule",body.transform,new[]{0f,3f,3.8f,3f,1.8f,0f},new[]{-2f,-2f,-1f,1f,3f,3.5f},ceramic);Obj("Earth Horizon",reentry.transform,PrimitiveType.Sphere,new Vector3(0,-420,140),Vector3.one*870,mats["EarthSurface"]);
+        var reentry=Empty("再入大气层",s.transform);LightAt(reentry.transform,new Color(1,.84f,.68f),2.1f,new Vector3(30,-48,8));var body=Empty("Return Capsule",reentry.transform,new Vector3(0,15,0));var ceramic=mats["Ceramic"];Lathe("ReentryCapsule",body.transform,new[]{0f,3f,3.8f,3f,1.8f,0f},new[]{-2f,-2f,-1f,1f,3f,3.5f},ceramic);Obj("Earth Horizon",reentry.transform,PrimitiveType.Sphere,new Vector3(0,-420,140),Vector3.one*870,mats["EarthSurface"]);
         var glow=Particle("ReentryPlasma",body.transform,new Vector3(0,-2,0),new Color(1,.3f,.06f,.6f),5,17,1.1f,130);var em=glow.emission;em.enabled=true;
-        var land=Empty("返回着陆",s.transform);Obj("Grassland",land.transform,PrimitiveType.Plane,new Vector3(0,-1,0),Vector3.one*65,Mat("Grass",new Color(.12f,.23f,.12f)));
+        var land=Empty("返回着陆",s.transform);LightAt(land.transform,new Color(1,.94f,.82f),1.65f,new Vector3(38,-34,4));
+        var steppe=Mat("SteppeGround",new Color(.31f,.33f,.16f),0,.18f);var ridge=Mat("SteppeRidge",new Color(.24f,.29f,.24f),0,.12f);
+        LandingTerrain(land.transform,"ReturnSteppeTerrain",steppe);RidgeRing(land.transform,"ReturnDistantRidge",ridge);
         var pod=Empty("Landing Capsule",land.transform,new Vector3(0,32,0));Lathe("LandingCapsule",pod.transform,new[]{0f,3f,3.8f,3f,1.8f,0f},new[]{-2f,-2f,-1f,1f,3f,3.5f},ceramic);
         var chute=Empty("Parachute",pod.transform,new Vector3(0,16,0));var chuteMaterial=Mat("ParachuteOrange",new Color(.94f,.29f,.07f));chuteMaterial.SetFloat("_Cull",0);Lathe("ParachuteCanopy",chute.transform,new[]{0f,3f,7f,10f,12f},new[]{5.5f,5f,4f,2f,0f},chuteMaterial);
         for(int i=0;i<12;i++){float a=i*Mathf.PI/6;Beam("Suspension Line",chute.transform,new Vector3(0,-13,0),new Vector3(Mathf.Cos(a)*12,0,Mathf.Sin(a)*12),.035f,ceramic);}
         Animate(s,pod,"Return_Descent","m_LocalPosition.y",new[]{0f,32,37,43,45},new[]{32f,32,19,4,2});
-        for(int i=0;i<25;i++){float a=i*.251f;Obj("Distant Ridge",land.transform,PrimitiveType.Sphere,new Vector3(Mathf.Cos(a)*240,-8,Mathf.Sin(a)*240),new Vector3(80,30+i%5*8,65),mats["Grass"]);}
         var landingAim=Empty("Landing Camera Aim",pod.transform,new Vector3(0,9,0)).transform;
         var cams=new[]{VCam("01 上升器远景",ascent.transform,aim,new Vector3(30,5,-45)),VCam("02 轨道交会",ascent.transform,aim,new Vector3(-16,3,-24)),VCam("03 再入广角",reentry.transform,body.transform,new Vector3(22,8,-30)),VCam("04 热防护特写",reentry.transform,body.transform,new Vector3(9,3,-13),45),VCam("05 主伞展开",land.transform,landingAim,new Vector3(42,18,-55),52),VCam("06 安全着陆",land.transform,landingAim,new Vector3(34,10,-50),50)};
         Shots(s,cams,new[]{0f,9,19,25,32,39},new[]{10f,10,7,7,8,6});Activation(s,ascent,0,19);Activation(s,reentry,19,13);Activation(s,land,32,13);
         var visual=s.gameObject.AddComponent<Module4VisualDriver>();visual.sequence=s;visual.engines=engines;visual.engineOn=0;visual.engineOff=19;visual.parachute=chute.transform;
+        visual.phase1Sky=moonSky;visual.phase2Sky=reentrySky;visual.phase3Sky=landingSky;visual.phase2Start=19;visual.phase3Start=32;visual.phase3Fog=true;
+        visual.phase1Ambient=new Color(.15f,.16f,.19f);visual.phase2Ambient=new Color(.22f,.2f,.2f);visual.phase3Ambient=new Color(.46f,.48f,.43f);
         Audio(s,"BGM_Earth.wav",0,45,.28f);Audio(s,"SFX_Rocket_Loop.wav",0,16,.5f,true);Audio(s,"SFX_Cabin_Loop.wav",19,13,.35f,true);Audio(s,"SFX_Quest_Complete.wav",42,1.4f,.6f);return s;
     }
 
@@ -311,31 +395,30 @@ public static class Module4Builder
     {var r=Rect(name,parent,min,max,p,box);var t=r.gameObject.AddComponent<Text>();t.font=font;t.fontSize=size;t.color=color;t.text=value;t.alignment=align;t.horizontalOverflow=HorizontalWrapMode.Wrap;t.verticalOverflow=VerticalWrapMode.Truncate;t.raycastTarget=false;return t;}
     static Module4HudView BuildHud()
     {
-        var root=new GameObject("Module4HUD",typeof(Canvas),typeof(CanvasScaler),typeof(GraphicRaycaster));root.GetComponent<Canvas>().renderMode=RenderMode.ScreenSpaceOverlay;var scale=root.GetComponent<CanvasScaler>();scale.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scale.referenceResolution=new Vector2(1920,1080);scale.matchWidthOrHeight=.5f;var v=root.AddComponent<Module4HudView>();
-        Color cyan=new Color(.25f,.82f,.93f),white=new Color(.91f,.95f,.98f),muted=new Color(.58f,.69f,.78f),navy=new Color(.015f,.035f,.06f,.83f);
-        Panel("Top Rule",root.transform,new Vector2(0,1),new Vector2(1,1),new Vector2(0,-32),new Vector2(-96,2),new Color(.2f,.7f,.85f,.6f));
-        Label("Brand",root.transform,"LUNARQUEST  /  广寒任务",25,cyan,new Vector2(0,1),new Vector2(0,1),new Vector2(285,-72),new Vector2(470,45));
-        v.chapterText=Label("Chapter",root.transform,"01 / 蓄势·启程",34,white,new Vector2(.5f,1),new Vector2(.5f,1),new Vector2(0,-72),new Vector2(650,56),TextAnchor.MiddleCenter);
-        v.phaseText=Label("Phase",root.transform,"LAUNCH",16,muted,new Vector2(.5f,1),new Vector2(.5f,1),new Vector2(0,-120),new Vector2(650,32),TextAnchor.MiddleCenter);
-        v.missionClock=Label("Mission Clock",root.transform,"MET 00:00",26,white,new Vector2(1,1),new Vector2(1,1),new Vector2(-205,-72),new Vector2(310,45),TextAnchor.MiddleRight);
-        var data=Panel("Telemetry",root.transform,new Vector2(0,0),new Vector2(0,0),new Vector2(282,164),new Vector2(470,190),navy);
-        Label("Telemetry Header",data.transform,"飞 行 状 态    /    演 出 遥 测",17,cyan,new Vector2(.5f,1),new Vector2(.5f,1),new Vector2(0,-28),new Vector2(420,35));
-        Label("Speed Label",data.transform,"速度",16,muted,Vector2.zero,Vector2.zero,new Vector2(46,108),new Vector2(70,30));v.speedText=Label("speedText",data.transform,"0.0 km/h",28,white,Vector2.zero,Vector2.zero,new Vector2(130,66),new Vector2(190,48));
-        Label("Altitude Label",data.transform,"高度",16,muted,Vector2.zero,Vector2.zero,new Vector2(250,108),new Vector2(100,30));v.altitudeText=Label("Altitude",data.transform,"0 m",25,white,Vector2.zero,Vector2.zero,new Vector2(300,66),new Vector2(170,48));
-        v.oxygenText=Label("Oxygen",data.transform,"100%",18,cyan,Vector2.zero,Vector2.zero,new Vector2(380,25),new Vector2(100,30),TextAnchor.MiddleRight);
-        var task=Panel("Mission",root.transform,new Vector2(1,0),new Vector2(1,0),new Vector2(-300,161),new Vector2(500,185),navy);
-        Label("Task Header",task.transform,"当 前 任 务",17,cyan,new Vector2(.5f,1),new Vector2(.5f,1),new Vector2(0,-27),new Vector2(450,35));v.questText=Label("questText",task.transform,"发射准备",24,white,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(0,4),new Vector2(450,70));v.promptText=Label("promptText",task.transform,"",18,muted,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,30),new Vector2(450,50));
-        var map=Panel("Minimap Panel",root.transform,new Vector2(1,1),new Vector2(1,1),new Vector2(-180,-300),new Vector2(260,260),navy);var mapRaw=Rect("Map Feed",map.transform,Vector2.zero,Vector2.one,Vector2.zero,new Vector2(-10,-10)).gameObject.AddComponent<RawImage>();mapRaw.color=new Color(.62f,.75f,.85f,.85f);
-        Label("Map Header",map.transform,"广寒站 · 导航",18,cyan,new Vector2(.5f,1),new Vector2(.5f,1),new Vector2(0,-22),new Vector2(230,35));v.minimapArrow=Rect("Player Arrow",map.transform,new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(30,40));Label("Arrow",v.minimapArrow,"▲",30,cyan,new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(40,45),TextAnchor.MiddleCenter);
-        var sub=Panel("Radio Subtitle",root.transform,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,356),new Vector2(960,122),navy);v.subtitlePanel=sub.gameObject;v.speakerText=Label("Speaker",sub.transform,"地面飞控",17,cyan,new Vector2(0,.5f),new Vector2(0,.5f),new Vector2(115,28),new Vector2(180,32));v.subtitleText=Label("Subtitle",sub.transform,"",27,white,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(0,-18),new Vector2(890,68),TextAnchor.MiddleCenter);
+        var root=new GameObject("Module4HUD",typeof(Canvas),typeof(CanvasScaler),typeof(GraphicRaycaster));root.transform.localScale=Vector3.one;root.GetComponent<Canvas>().renderMode=RenderMode.ScreenSpaceOverlay;var scale=root.GetComponent<CanvasScaler>();scale.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scale.referenceResolution=new Vector2(1920,1080);scale.matchWidthOrHeight=.5f;var v=root.AddComponent<Module4HudView>();
+        v.showSubtitles=false;v.showTitleCards=false;
+        Color cyan=new Color(.35f,.88f,.96f),white=new Color(.94f,.97f,.99f),muted=new Color(.66f,.74f,.78f),navy=new Color(.008f,.022f,.035f,.62f);
+        var clock=Panel("Time Background",root.transform,new Vector2(1,1),new Vector2(1,1),new Vector2(-92,-52),new Vector2(118,48),new Color(.008f,.022f,.035f,.48f));
+        v.missionClock=Label("Mission Clock",clock.transform,"00:00",22,white,new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(100,34),TextAnchor.MiddleCenter);
+        var data=Panel("Flight Data",root.transform,new Vector2(0,0),new Vector2(0,0),new Vector2(285,92),new Vector2(510,116),navy);
+        Label("Speed Label",data.transform,"速度",14,muted,Vector2.zero,Vector2.zero,new Vector2(42,80),new Vector2(60,24));v.speedText=Label("speedText",data.transform,"0.0 km/h",24,white,Vector2.zero,Vector2.zero,new Vector2(105,40),new Vector2(170,42));
+        Label("Altitude Label",data.transform,"高度",14,muted,Vector2.zero,Vector2.zero,new Vector2(207,80),new Vector2(60,24));v.altitudeText=Label("Altitude",data.transform,"0 m",24,white,Vector2.zero,Vector2.zero,new Vector2(270,40),new Vector2(160,42));
+        Label("System Label",data.transform,"系统",14,muted,Vector2.zero,Vector2.zero,new Vector2(391,80),new Vector2(60,24));v.oxygenText=Label("System",data.transform,"100%",24,cyan,Vector2.zero,Vector2.zero,new Vector2(439,40),new Vector2(100,42),TextAnchor.MiddleCenter);
+        var hidden=Rect("Hidden Runtime Bindings",root.transform,Vector2.zero,Vector2.zero,new Vector2(-4000,-4000),new Vector2(10,10));
+        v.chapterText=Label("Chapter",hidden,"",1,Color.clear,Vector2.zero,Vector2.zero,Vector2.zero,Vector2.one);
+        v.phaseText=Label("Phase",hidden,"",1,Color.clear,Vector2.zero,Vector2.zero,Vector2.zero,Vector2.one);
+        v.questText=Label("questText",hidden,"",1,Color.clear,Vector2.zero,Vector2.zero,Vector2.zero,Vector2.one);
+        v.promptText=Label("promptText",hidden,"",1,Color.clear,Vector2.zero,Vector2.zero,Vector2.zero,Vector2.one);
+        v.footerText=Label("Controls",hidden,"",1,Color.clear,Vector2.zero,Vector2.zero,Vector2.zero,Vector2.one);
+        hidden.gameObject.SetActive(false);
+        var map=Panel("Hidden Minimap",root.transform,new Vector2(0,0),new Vector2(0,0),new Vector2(-3000,-3000),new Vector2(32,32),Color.clear);var mapRaw=Rect("Map Feed",map.transform,Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero).gameObject.AddComponent<RawImage>();mapRaw.color=Color.clear;
+        v.minimapArrow=Rect("Player Arrow",map.transform,new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(1,1));
+        var sub=Panel("Radio Subtitle",root.transform,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,150),new Vector2(900,90),new Color(.008f,.022f,.035f,.55f));v.subtitlePanel=sub.gameObject;v.speakerText=Label("Speaker",sub.transform,"",1,Color.clear,Vector2.zero,Vector2.zero,Vector2.zero,Vector2.one);v.subtitleText=Label("Subtitle",sub.transform,"",24,white,new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(840,60),TextAnchor.MiddleCenter);sub.gameObject.SetActive(false);
         var dialog=Panel("NPC Dialogue",root.transform,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(0,-35),new Vector2(820,250),navy);v.dialoguePanel=dialog.gameObject;v.dialogueText=Label("Dialogue",dialog.transform,"",25,white,new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,new Vector2(750,220));dialog.gameObject.SetActive(false);
-        v.landingText=Label("Landing Tuning",root.transform,"",21,white,new Vector2(0,.5f),new Vector2(0,.5f),new Vector2(280,80),new Vector2(450,260));
-        v.landingText.color=new Color(0,0,0,0);
-        var tuning=Rect("Landing Parameter Panel",root.transform,new Vector2(0,.5f),new Vector2(0,.5f),new Vector2(280,60),new Vector2(455,420));
-        v.landingPanel=tuning.gameObject;tuning.gameObject.AddComponent<Module4LandingTuning>().font=font;
-        v.footerText=Label("Controls",root.transform,"",17,muted,new Vector2(.5f,0),new Vector2(.5f,0),new Vector2(0,32),new Vector2(1740,40),TextAnchor.MiddleCenter);
+        v.landingText=Label("Landing Tuning",root.transform,"",1,Color.clear,new Vector2(0,0),new Vector2(0,0),new Vector2(-3000,-3000),Vector2.one);
+        var tuning=Rect("Landing Parameter Panel",root.transform,new Vector2(0,0),new Vector2(0,0),new Vector2(-3000,-3000),new Vector2(455,420));v.landingPanel=tuning.gameObject;tuning.gameObject.AddComponent<Module4LandingTuning>().font=font;
         var progress=Panel("Progress Background",root.transform,Vector2.zero,new Vector2(1,0),new Vector2(0,7),new Vector2(0,3),new Color(.05f,.1f,.15f));v.progress=Panel("Progress",progress.transform,Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero,cyan);v.progress.sprite=AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");v.progress.type=Image.Type.Filled;v.progress.fillMethod=Image.FillMethod.Horizontal;v.progress.fillAmount=0;
-        var title=Panel("Title Card",root.transform,Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero,new Color(.005f,.015f,.03f,.88f));v.titlePanel=title.gameObject;v.titleText=Label("Title",title.transform,"",74,white,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(0,80),new Vector2(1600,160),TextAnchor.MiddleCenter);v.titleEnglish=Label("Title English",title.transform,"",25,cyan,new Vector2(.5f,.5f),new Vector2(.5f,.5f),new Vector2(0,-85),new Vector2(1500,150),TextAnchor.MiddleCenter);
+        var title=Panel("Title Card",root.transform,Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero,Color.clear);v.titlePanel=title.gameObject;v.titleText=Label("Title",title.transform,"",1,Color.clear,new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,Vector2.one);v.titleEnglish=Label("Title English",title.transform,"",1,Color.clear,new Vector2(.5f,.5f),new Vector2(.5f,.5f),Vector2.zero,Vector2.one);title.gameObject.SetActive(false);
         v.fade=Panel("Black Transition",root.transform,Vector2.zero,Vector2.one,Vector2.zero,Vector2.zero,new Color(0,0,0,0));return v;
     }
 }
